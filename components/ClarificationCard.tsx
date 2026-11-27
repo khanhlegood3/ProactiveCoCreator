@@ -1,13 +1,13 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
-*/
+ */
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Tooltip } from './Tooltip';
 import { Clarification } from '../types';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export const NOT_RELEVANT_TEXT = "[NOT RELEVANT] This question is not relevant to my prompt. Do not include details about it.";
 export const YOU_DECIDE_TEXT = "[YOU DECIDE] I don't care, you decide. Take creative liberty here.";
@@ -24,43 +24,43 @@ interface ClarificationCardProps {
 // --- Thinking Process Component ---
 const ThinkingProcess = ({ prompt = "" }: { prompt: string }) => {
     const [step, setStep] = useState(0);
+    const { tr } = useLanguage();
 
     const steps = useMemo(() => {
         const baseSteps = [
-            "Analyzing prompt for ambiguities...",
-            "Identifying vague attributes...",
-            "Detecting implicit entities...",
-            "Evaluating semantic uncertainties...",
-            "Drafting clarification questions...",
+            tr("Đang phân tích điểm mơ hồ của prompt...", "Analyzing prompt for ambiguities..."),
+            tr("Đang xác định các thuộc tính còn thiếu...", "Identifying vague attributes..."),
+            tr("Đang phát hiện các thực thể ẩn...", "Detecting implicit entities..."),
+            tr("Đang đánh giá mức độ không chắc chắn...", "Evaluating semantic uncertainties..."),
+            tr("Đang soạn câu hỏi làm rõ...", "Drafting clarification questions..."),
         ];
-        
-        // Context detection for more specific steps
+
         if (prompt && prompt.length > 0) {
             const lowerPrompt = prompt.toLowerCase();
-            if (lowerPrompt.includes("image") || lowerPrompt.includes("picture") || lowerPrompt.includes("scene")) {
-                 baseSteps.splice(1, 0, "Scanning visual descriptors...");
+            if (lowerPrompt.includes("image") || lowerPrompt.includes("picture") || lowerPrompt.includes("scene") || lowerPrompt.includes("ảnh")) {
+                 baseSteps.splice(1, 0, tr("Đang quét mô tả thị giác...", "Scanning visual descriptors..."));
             }
-            if (lowerPrompt.includes("story") || lowerPrompt.includes("narrative") || lowerPrompt.includes("write")) {
-                 baseSteps.splice(1, 0, "Evaluating narrative gaps...");
+            if (lowerPrompt.includes("story") || lowerPrompt.includes("narrative") || lowerPrompt.includes("write") || lowerPrompt.includes("truyện")) {
+                 baseSteps.splice(1, 0, tr("Đang kiểm tra mạch truyện...", "Evaluating narrative gaps..."));
             }
             if (lowerPrompt.includes("video") || lowerPrompt.includes("movie")) {
-                baseSteps.splice(1, 0, "Checking temporal dynamics...");
+                baseSteps.splice(1, 0, tr("Đang kiểm tra chuyển động khung hình...", "Checking temporal dynamics..."));
             }
         }
-        
+
         return baseSteps;
-    }, [prompt]);
+    }, [prompt, tr]);
 
     useEffect(() => {
         const interval = setInterval(() => {
             setStep((s) => (s + 1) % steps.length);
-        }, 2200); // 2.2 seconds per step
+        }, 2200);
         return () => clearInterval(interval);
     }, [steps]);
 
     return (
         <span className="text-sm font-medium text-gray-600 dark:text-gray-300 animate-pulse min-w-[240px] text-center transition-all duration-300">
-            {steps[step]}
+            {steps[step % steps.length]}
         </span>
     );
 };
@@ -73,17 +73,16 @@ const ClarificationCard: React.FC<ClarificationCardProps> = ({
     setPendingAnswers,
     prompt = ""
 }) => {
+  const { tr } = useLanguage();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [direction, setDirection] = useState(0);
 
-  // Reset slide when clarifications change
   useEffect(() => {
     setCurrentSlide(0);
   }, [clarifications]);
 
   const handleSelectOption = (question: string, option: string) => {
       setPendingAnswers(prev => ({ ...prev, [question]: option }));
-      // Auto-advance on mobile after selection
       if (window.innerWidth < 768 && currentSlide < clarifications.length - 1) {
           setTimeout(() => handleNext(), 300);
       }
@@ -124,30 +123,24 @@ const ClarificationCard: React.FC<ClarificationCardProps> = ({
   };
 
   const variants = {
-    enter: (direction: number) => {
-      return {
-        x: direction > 0 ? 100 : -100,
-        opacity: 0
-      };
-    },
+    enter: (direction: number) => ({
+      x: direction > 0 ? 100 : -100,
+      opacity: 0
+    }),
     center: {
       zIndex: 1,
       x: 0,
       opacity: 1
     },
-    exit: (direction: number) => {
-      return {
-        zIndex: 0,
-        x: direction < 0 ? 100 : -100,
-        opacity: 0
-      };
-    }
+    exit: (direction: number) => ({
+      zIndex: 0,
+      x: direction < 0 ? 100 : -100,
+      opacity: 0
+    })
   };
 
   const swipeConfidenceThreshold = 10000;
-  const swipePower = (offset: number, velocity: number) => {
-    return Math.abs(offset) * velocity;
-  };
+  const swipePower = (offset: number, velocity: number) => Math.abs(offset) * velocity;
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg transition-colors duration-200 flex flex-col relative w-full flex-1 min-h-0">
@@ -174,7 +167,13 @@ const ClarificationCard: React.FC<ClarificationCardProps> = ({
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-3 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                     </svg>
-                    <p className="text-base font-medium">Click <span className="font-bold text-blue-600 dark:text-blue-400">Refine prompt</span> to generate clarifying questions.</p>
+                    <p className="text-base font-medium">
+                      {tr('Nhấn ', 'Click ')}
+                      <span className="font-bold text-blue-600 dark:text-blue-400">
+                        {tr('Tinh chỉnh prompt', 'Refine prompt')}
+                      </span>
+                      {tr(' để tạo các câu hỏi làm rõ ý tưởng.', ' to generate clarifying questions.')}
+                    </p>
                 </div>
             </div>
         ) : (
@@ -217,12 +216,12 @@ const ClarificationCard: React.FC<ClarificationCardProps> = ({
                                         type="text"
                                         value={pendingAnswers[item.question] && !item.options.includes(pendingAnswers[item.question]) && pendingAnswers[item.question] !== NOT_RELEVANT_TEXT && pendingAnswers[item.question] !== YOU_DECIDE_TEXT ? pendingAnswers[item.question] : ''}
                                         onChange={(e) => handleCustomAnswerChange(item.question, e.target.value)}
-                                        placeholder="Or type answer..."
+                                        placeholder={tr('Hoặc nhập câu trả lời...', 'Or type answer...')}
                                         disabled={isLoading}
                                         className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 focus:outline-none focus:border-blue-500 bg-gray-50 dark:bg-gray-900/50 focus:bg-white dark:focus:bg-gray-800 text-gray-800 dark:text-gray-200 mb-2"
                                     />
                                     <div className="flex gap-2">
-                                        <Tooltip content="Ignore this concept" position="bottom-left">
+                                        <Tooltip content={tr('Bỏ qua khái niệm này', 'Ignore this concept')} position="bottom-left">
                                             <button
                                                 onClick={() => handleSelectOption(item.question, NOT_RELEVANT_TEXT)}
                                                 className={`text-[11px] font-medium py-1 px-2 rounded border transition-colors ${
@@ -231,10 +230,10 @@ const ClarificationCard: React.FC<ClarificationCardProps> = ({
                                                         : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
                                                 }`}
                                             >
-                                                Not Relevant
+                                                {tr('Không liên quan', 'Not Relevant')}
                                             </button>
                                         </Tooltip>
-                                        <Tooltip content="Let the AI decide" position="bottom">
+                                        <Tooltip content={tr('Để AI tự quyết định', 'Let the AI decide')} position="bottom">
                                             <button
                                                 onClick={() => handleSelectOption(item.question, YOU_DECIDE_TEXT)}
                                                 className={`text-[11px] font-medium py-1 px-2 rounded border transition-colors ${
@@ -243,7 +242,7 @@ const ClarificationCard: React.FC<ClarificationCardProps> = ({
                                                         : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
                                                 }`}
                                             >
-                                                You Decide
+                                                {tr('Để AI quyết định', 'You Decide')}
                                             </button>
                                         </Tooltip>
                                     </div>
@@ -254,7 +253,7 @@ const ClarificationCard: React.FC<ClarificationCardProps> = ({
                     
                     {clarifications.length > 0 && (
                         <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex flex-row justify-between items-center gap-2">
-                            <Tooltip content="Get different questions" position="bottom-left">
+                            <Tooltip content={tr('Lấy bộ câu hỏi khác', 'Get different questions')} position="bottom-left">
                                 <button 
                                     onClick={onRefresh}
                                     disabled={isLoading}
@@ -263,10 +262,12 @@ const ClarificationCard: React.FC<ClarificationCardProps> = ({
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                     </svg>
-                                    Refresh Questions
+                                    {tr('Đổi câu hỏi khác', 'Refresh Questions')}
                                 </button>
                             </Tooltip>
-                            <span className="text-xs text-gray-400 italic text-right whitespace-nowrap">Click "Update Prompt" to apply.</span>
+                            <span className="text-xs text-gray-400 italic text-right whitespace-nowrap">
+                              {tr('Nhấn "Cập nhật prompt" để áp dụng.', 'Click "Update Prompt" to apply.')}
+                            </span>
                         </div>
                     )}
                 </div>
@@ -291,9 +292,9 @@ const ClarificationCard: React.FC<ClarificationCardProps> = ({
                                 <div className="flex justify-between items-center px-4 pt-4 pb-2 shrink-0">
                                     <div className="flex items-center gap-3">
                                         <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                                            Question {currentSlide + 1} of {clarifications.length}
+                                            {tr(`Câu hỏi ${currentSlide + 1} / ${clarifications.length}`, `Question ${currentSlide + 1} of ${clarifications.length}`)}
                                         </span>
-                                        <Tooltip content="Refresh questions" position="bottom">
+                                        <Tooltip content={tr('Làm mới câu hỏi', 'Refresh questions')} position="bottom">
                                             <button 
                                                 onClick={onRefresh}
                                                 disabled={isLoading}
@@ -302,7 +303,7 @@ const ClarificationCard: React.FC<ClarificationCardProps> = ({
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                                 </svg>
-                                                <span className="text-[11px] font-semibold">Refresh</span>
+                                                <span className="text-[11px] font-semibold">{tr('Làm mới', 'Refresh')}</span>
                                             </button>
                                         </Tooltip>
                                     </div>
@@ -332,7 +333,7 @@ const ClarificationCard: React.FC<ClarificationCardProps> = ({
                                             drag="x"
                                             dragConstraints={{ left: 0, right: 0 }}
                                             dragElastic={1}
-                                            onDragEnd={(e, { offset, velocity }) => {
+                                            onDragEnd={(_e, { offset, velocity }) => {
                                                 const swipe = swipePower(offset.x, velocity.x);
 
                                                 if (swipe < -swipeConfidenceThreshold) {
@@ -368,7 +369,7 @@ const ClarificationCard: React.FC<ClarificationCardProps> = ({
                                                         type="text"
                                                         value={pendingAnswers[clarifications[currentSlide].question] && !clarifications[currentSlide].options.includes(pendingAnswers[clarifications[currentSlide].question]) && pendingAnswers[clarifications[currentSlide].question] !== NOT_RELEVANT_TEXT && pendingAnswers[clarifications[currentSlide].question] !== YOU_DECIDE_TEXT ? pendingAnswers[clarifications[currentSlide].question] : ''}
                                                         onChange={(e) => handleCustomAnswerChange(clarifications[currentSlide].question, e.target.value)}
-                                                        placeholder="Or type your own answer..."
+                                                        placeholder={tr('Hoặc nhập câu trả lời của bạn...', 'Or type your own answer...')}
                                                         disabled={isLoading}
                                                         className="w-full text-base border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 dark:bg-gray-900/50 focus:bg-white dark:focus:bg-gray-800 text-gray-800 dark:text-gray-200 transition-all"
                                                     />
@@ -380,7 +381,7 @@ const ClarificationCard: React.FC<ClarificationCardProps> = ({
 
                                 <div className="p-2 sm:px-4 sm:py-2 flex justify-between items-center bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 z-10 shrink-0">
                                     <div className="flex gap-2">
-                                        <Tooltip content="Ignore this concept" position="top-left">
+                                        <Tooltip content={tr('Bỏ qua khái niệm này', 'Ignore this concept')} position="top-left">
                                             <button
                                                 onClick={handleNotRelevant}
                                                 className={`text-sm font-medium py-1.5 px-3 rounded-lg border transition-colors ${
@@ -389,10 +390,10 @@ const ClarificationCard: React.FC<ClarificationCardProps> = ({
                                                         : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
                                                 }`}
                                             >
-                                                Not Relevant
+                                                {tr('Không liên quan', 'Not Relevant')}
                                             </button>
                                         </Tooltip>
-                                        <Tooltip content="Let the AI decide" position="top">
+                                        <Tooltip content={tr('Để AI tự quyết định', 'Let the AI decide')} position="top">
                                             <button
                                                 onClick={handleYouDecide}
                                                 className={`text-sm font-medium py-1.5 px-3 rounded-lg border transition-colors ${
@@ -401,12 +402,12 @@ const ClarificationCard: React.FC<ClarificationCardProps> = ({
                                                         : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
                                                 }`}
                                             >
-                                                You Decide
+                                                {tr('Để AI quyết định', 'You Decide')}
                                             </button>
                                         </Tooltip>
                                     </div>
                                     <div className="flex gap-2">
-                                        <Tooltip content="Previous question" position="top-right">
+                                        <Tooltip content={tr('Câu trước', 'Previous question')} position="top-right">
                                             <button
                                                 onClick={handlePrev}
                                                 disabled={currentSlide === 0}
@@ -417,7 +418,7 @@ const ClarificationCard: React.FC<ClarificationCardProps> = ({
                                                 </svg>
                                             </button>
                                         </Tooltip>
-                                        <Tooltip content="Next question" position="top-right">
+                                        <Tooltip content={tr('Câu tiếp theo', 'Next question')} position="top-right">
                                             <button
                                                 onClick={handleNext}
                                                 disabled={currentSlide === clarifications.length - 1}

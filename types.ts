@@ -101,6 +101,8 @@ export type StoryType = 'generic' | 'video-prompt';
 export type AspectRatio = '1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '1:4' | '1:8' | '4:1' | '8:1';
 export type Proactiveness = 'low' | 'medium' | 'high';
 
+export type Language = 'vi' | 'en';
+
 export type GraphUpdate =
   | { type: 'attribute'; entity: string; attribute: string; value: string }
   | { type: 'relationship'; source: string; target: string; oldLabel: string; newLabel: string };
@@ -108,6 +110,7 @@ export type GraphUpdate =
 export interface WorkspaceSnapshot {
   id: 'current';
   updatedAt: string;
+  language?: Language;
   mode: AppMode;
   gamePortalTrack: GamePortalTrack;
   cryptoSolanaTrack: CryptoSolanaTrack;

@@ -35,6 +35,7 @@ import {
   DomainBlueprint,
   SavedSessionRecord,
   WorkspaceSnapshot,
+  Language,
 } from './types';
 import {
   buildExportBundle,
@@ -51,6 +52,7 @@ import {
 } from './services/indexedDbService';
 import ReviewPromptModal from './components/ReviewPromptModal';
 import SessionHistoryModal from './components/SessionHistoryModal';
+import { useLanguage } from './contexts/LanguageContext';
 
 interface ProposedPromptState {
   text: string;
@@ -69,18 +71,39 @@ function splitFirstColon(key: string): [string, string] {
   return [key.slice(0, idx), key.slice(idx + 1)];
 }
 
-const DEFAULT_PROMPTS: Record<AppMode, string> = {
-  image: 'a cat hosting a party for its bunny friends',
-  story: 'a cat hosting a party for its bunny friends',
-  video: 'a cat hosting a party for its bunny friends',
-  'game-portal':
-    'Thiết kế mô hình Game9K Giai đoạn 1 lấy PlaytestCloud B2B làm lõi kiếm tiền, dùng hạ tầng HTML5 không cần cài đặt chuẩn Poki, bộ chỉ số Voodoo Gate (crash rate <= 1.5%, completion >= 68%, D1 retention >= 32%) và cổng biên bản USDC/USDT Escrow đối soát tự động 100% để loại bỏ lỗi Delayed Delivery.',
-  'crypto-solana':
-    'Thiết kế cơ chế phát hành token trên Pump.fun (Solana SPL) với Bonding Curve 85 SOL trước khi graduate sang Raydium, kết hợp thanh toán PDA Escrow bằng USDC-SPL và USDT-SPL (0% gateway fee, <400ms finality) cho hệ sinh thái Game9K.',
+const DEFAULT_PROMPTS_BY_LANG: Record<Language, Record<AppMode, string>> = {
+  vi: {
+    image: 'một chú mèo đang tổ chức tiệc cùng những người bạn thỏ',
+    story: 'một chú mèo đang tổ chức tiệc cùng những người bạn thỏ',
+    video: 'một chú mèo đang tổ chức tiệc cùng những người bạn thỏ',
+    'game-portal':
+      'Thiết kế mô hình Game9K Giai đoạn 1 lấy PlaytestCloud B2B làm lõi kiếm tiền, dùng hạ tầng HTML5 không cần cài đặt chuẩn Poki, bộ chỉ số Voodoo Gate (crash rate <= 1.5%, completion >= 68%, D1 retention >= 32%) và cổng biên bản USDC/USDT Escrow đối soát tự động 100% để loại bỏ lỗi Delayed Delivery.',
+    'crypto-solana':
+      'Thiết kế cơ chế phát hành token trên Pump.fun (Solana SPL) với Bonding Curve 85 SOL trước khi graduate sang Raydium, kết hợp thanh toán PDA Escrow bằng USDC-SPL và USDT-SPL (0% gateway fee, <400ms finality) cho hệ sinh thái Game9K.',
+  },
+  en: {
+    image: 'a cat hosting a party for its bunny friends',
+    story: 'a cat hosting a party for its bunny friends',
+    video: 'a cat hosting a party for its bunny friends',
+    'game-portal':
+      'Architect Game9K Phase 1 around PlaytestCloud B2B monetization, zero-install Poki HTML5 web infrastructure, Voodoo Input Gate thresholds (crash rate <= 1.5%, completion >= 68%, D1 retention >= 32%), and an automated USDC/USDT Escrow Receipt Gate eliminating 100% of Delayed Delivery errors.',
+    'crypto-solana':
+      'Design a Pump.fun (Solana SPL) token launch mechanism with an 85 SOL Bonding Curve before graduating to Raydium, paired with USDC-SPL and USDT-SPL Anchor PDA Escrow (0% gateway fee, <400ms finality) for the Game9K ecosystem.',
+  },
 };
 
+function isDefaultStarterPrompt(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return true;
+  return (
+    Object.values(DEFAULT_PROMPTS_BY_LANG.vi).some((p) => p === trimmed) ||
+    Object.values(DEFAULT_PROMPTS_BY_LANG.en).some((p) => p === trimmed)
+  );
+}
+
 function App() {
-  const [prompt, setPrompt] = useState(DEFAULT_PROMPTS.image);
+  const { language, setLanguage, tr } = useLanguage();
+  const [prompt, setPrompt] = useState(() => DEFAULT_PROMPTS_BY_LANG[language].image);
   const [uploadedImages, setUploadedImages] = useState<ImagePart[]>([]);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('16:9');
   // Default resolution for Image mode
@@ -183,6 +206,7 @@ function App() {
     isOutdated,
     activeToolTab,
     isDarkMode,
+    language,
     images,
     story,
     video,
@@ -214,6 +238,7 @@ function App() {
     isOutdated,
     activeToolTab,
     isDarkMode,
+    language,
     images,
     story,
     video,
@@ -238,11 +263,15 @@ function App() {
         if (!active) return;
         setSavedSessions(sessions);
         if (snapshot) {
+          const restoredLang = snapshot.language ?? language;
+          if (snapshot.language) {
+            setLanguage(snapshot.language);
+          }
           setMode(snapshot.mode);
           modeRef.current = snapshot.mode;
           setGamePortalTrack(snapshot.gamePortalTrack);
           setCryptoSolanaTrack(snapshot.cryptoSolanaTrack);
-          setPrompt(snapshot.prompt || DEFAULT_PROMPTS[snapshot.mode]);
+          setPrompt(snapshot.prompt || DEFAULT_PROMPTS_BY_LANG[restoredLang][snapshot.mode]);
           setUploadedImages(snapshot.uploadedImages);
           setAspectRatio(snapshot.aspectRatio);
           setResolution(snapshot.resolution);
@@ -281,6 +310,17 @@ function App() {
       active = false;
     };
   }, []);
+
+  // If the user toggles language while still on an unmodified default starter prompt, update it to match
+  useEffect(() => {
+    if (!isHydratedRef.current) return;
+    setPrompt((prev) => {
+      if (isDefaultStarterPrompt(prev) && prev.trim() !== DEFAULT_PROMPTS_BY_LANG[language][mode]) {
+        return DEFAULT_PROMPTS_BY_LANG[language][mode];
+      }
+      return prev;
+    });
+  }, [language, mode]);
 
   // Auto-save full workspace (chats, processing state, and results) to IndexedDB
   useEffect(() => {
@@ -468,11 +508,8 @@ function App() {
     setRequiresApiKey(false);
 
     // If user hasn't customized away from any default prompt, swap cleanly to the new mode's starter prompt
-    const trimmedPrompt = prompt.trim();
-    const isDefaultPrompt =
-      trimmedPrompt === '' || Object.values(DEFAULT_PROMPTS).some((p) => p === trimmedPrompt);
-    if (isDefaultPrompt) {
-      setPrompt(DEFAULT_PROMPTS[newMode]);
+    if (isDefaultStarterPrompt(prompt)) {
+      setPrompt(DEFAULT_PROMPTS_BY_LANG[language][newMode]);
     }
 
     // Set defaults for new mode
@@ -516,8 +553,8 @@ function App() {
 
     const baseGraph = graphToAugment ?? beliefGraphRef.current;
     const rawGraphPromise = (isAugment && baseGraph)
-        ? updateBeliefGraph(baseGraph, currentPrompt, currentMode, safeStatusUpdate, currentImages, currentStoryType, currentProactiveness, currentClarificationModel, domainTrack)
-        : parsePromptToBeliefGraph(currentPrompt, currentMode, safeStatusUpdate, currentImages, currentStoryType, currentProactiveness, currentClarificationModel, domainTrack);
+        ? updateBeliefGraph(baseGraph, currentPrompt, currentMode, safeStatusUpdate, currentImages, currentStoryType, currentProactiveness, currentClarificationModel, domainTrack, language)
+        : parsePromptToBeliefGraph(currentPrompt, currentMode, safeStatusUpdate, currentImages, currentStoryType, currentProactiveness, currentClarificationModel, domainTrack, language);
 
     const graphPromise = rawGraphPromise
         .then(graphStructure => {
@@ -535,7 +572,7 @@ function App() {
             }
         });
 
-    const clarificationPromise = generateClarifications(currentPrompt, currentAnsweredQuestions, currentMode, safeStatusUpdate, currentImages, currentStoryType, currentClarificationModel, currentProactiveness, domainTrack)
+    const clarificationPromise = generateClarifications(currentPrompt, currentAnsweredQuestions, currentMode, safeStatusUpdate, currentImages, currentStoryType, currentClarificationModel, currentProactiveness, domainTrack, language)
         .then(generatedClarifications => {
             if (isCurrent()) setClarifications(generatedClarifications);
             return generatedClarifications;
@@ -554,7 +591,7 @@ function App() {
          setLastAnalyzedImagesSignature(getImagesSignature(currentImages));
     }
     return Promise.all([graphPromise, clarificationPromise]);
-  }, [handleStatusUpdate]);
+  }, [handleStatusUpdate, language]);
 
   const handleRefreshClarifications = useCallback(() => {
     const requestId = ++analysisRequestIdRef.current;
@@ -570,7 +607,7 @@ function App() {
     const currentQuestions = clarifications.map(c => c.question);
     setSkippedQuestions(prev => [...prev, ...currentQuestions]);
 
-    void generateClarifications(prompt, [...answeredQuestions, ...skippedQuestions, ...currentQuestions], requestMode, safeStatusUpdate, uploadedImages, storyType, selectedClarificationModel, proactiveness, domainTrack)
+    void generateClarifications(prompt, [...answeredQuestions, ...skippedQuestions, ...currentQuestions], requestMode, safeStatusUpdate, uploadedImages, storyType, selectedClarificationModel, proactiveness, domainTrack, language)
         .then(newClarifications => {
             if (isCurrent()) setClarifications(newClarifications);
         })
@@ -580,7 +617,7 @@ function App() {
         .finally(() => {
              if (isCurrent()) setIsClarificationsLoading(false);
         });
-  }, [prompt, answeredQuestions, mode, clarifications, skippedQuestions, handleStatusUpdate, uploadedImages, storyType, selectedClarificationModel, proactiveness, gamePortalTrack, cryptoSolanaTrack]);
+  }, [prompt, answeredQuestions, mode, clarifications, skippedQuestions, handleStatusUpdate, uploadedImages, storyType, selectedClarificationModel, proactiveness, gamePortalTrack, cryptoSolanaTrack, language]);
 
   const persistCompletedSession = useCallback(async (
     actionType: SavedSessionRecord['actionType'],
@@ -713,11 +750,11 @@ function App() {
                     producedImages = generatedImages;
                     if (isGenCurrent()) setImages(generatedImages);
                 } else if (requestMode === 'story') {
-                    const generatedStory = await generateStoryFromPrompt(currentPrompt, safeGenStatusUpdate, currentImages, currentModel, currentStoryType);
+                    const generatedStory = await generateStoryFromPrompt(currentPrompt, safeGenStatusUpdate, currentImages, currentModel, currentStoryType, language);
                     producedStory = generatedStory;
                     if (isGenCurrent()) setStory(generatedStory);
                 } else if (requestMode === 'video') {
-                    const generatedVideo = await generateVideosFromPrompt(currentPrompt, safeGenStatusUpdate, currentImages, currentRatio, currentModel, currentResolution);
+                    const generatedVideo = await generateVideosFromPrompt(currentPrompt, safeGenStatusUpdate, currentImages, currentRatio, currentModel, currentResolution, language);
                     producedVideo = generatedVideo;
                     if (isGenCurrent()) setVideo(generatedVideo);
                 } else if (requestMode === 'game-portal' || requestMode === 'crypto-solana') {
@@ -726,7 +763,8 @@ function App() {
                         requestMode,
                         safeGenStatusUpdate,
                         currentModel,
-                        domainTrack
+                        domainTrack,
+                        language
                     );
                     producedBlueprint = generatedBlueprint;
                     if (isGenCurrent()) {
@@ -736,7 +774,7 @@ function App() {
             } catch (error: any) {
                 console.warn(`Generation failed (${requestMode}):`, error);
                 if (isGenCurrent()) {
-                    let userFriendlyError = error?.message || "Failed to generate.";
+                    let userFriendlyError = error?.message || tr("Tạo kết quả thất bại.", "Failed to generate.");
                     const win = window as any;
 
                     // Handle API key issues only when an interactive key selector bridge is present.
@@ -744,9 +782,9 @@ function App() {
                          userFriendlyError.toLowerCase().includes("invalid api key")) &&
                         typeof win?.aistudio?.openSelectKey === 'function') {
                         setRequiresApiKey(true);
-                        userFriendlyError = "Please select a valid API key to continue.";
+                        userFriendlyError = tr("Vui lòng chọn API key hợp lệ để tiếp tục.", "Please select a valid API key to continue.");
                     } else if (userFriendlyError.includes("429") || userFriendlyError.includes("RESOURCE_EXHAUSTED") || userFriendlyError.toLowerCase().includes("rate limit")) {
-                        userFriendlyError = "API Quota exceeded. Please wait a moment and try again.";
+                        userFriendlyError = tr("Đã vượt hạn mức API. Vui lòng chờ một lát và thử lại.", "API Quota exceeded. Please wait a moment and try again.");
                     }
 
                     generationError = userFriendlyError;
@@ -823,7 +861,7 @@ function App() {
     if (qaPairs.length > 0 || graphUpdates.length > 0) {
         setIsUpdatingPrompt(true);
         try {
-            const refinedPrompt = await refinePromptWithAllUpdates(prompt, qaPairs, graphUpdates, handleStatusUpdate, proactiveness);
+            const refinedPrompt = await refinePromptWithAllUpdates(prompt, qaPairs, graphUpdates, handleStatusUpdate, proactiveness, language);
             setProposedPromptState({
                 text: refinedPrompt,
                 qaPairs,
@@ -839,7 +877,7 @@ function App() {
         const shouldSkipAnalysis = prompt === lastAnalyzedPrompt && mode === lastAnalyzedMode && currentImagesSignature === lastAnalyzedImagesSignature;
         void processRequest(targetPrompt, targetAnsweredQuestions, mode, shouldSkipAnalysis, false, uploadedImages, aspectRatio, resolution, selectedModel, storyType, selectedClarificationModel, proactiveness, undefined, domainTrack).catch(() => {});
     }
-  }, [prompt, mode, lastAnalyzedPrompt, lastAnalyzedMode, lastAnalyzedImagesSignature, answeredQuestions, pendingClarificationAnswers, pendingAttributeUpdates, pendingRelationshipUpdates, beliefGraph, processRequest, handleStatusUpdate, uploadedImages, aspectRatio, resolution, selectedModel, storyType, selectedClarificationModel, proactiveness, gamePortalTrack, cryptoSolanaTrack]);
+  }, [prompt, mode, lastAnalyzedPrompt, lastAnalyzedMode, lastAnalyzedImagesSignature, answeredQuestions, pendingClarificationAnswers, pendingAttributeUpdates, pendingRelationshipUpdates, beliefGraph, processRequest, handleStatusUpdate, uploadedImages, aspectRatio, resolution, selectedModel, storyType, selectedClarificationModel, proactiveness, gamePortalTrack, cryptoSolanaTrack, language]);
 
   const handleAnalyzeOnly = useCallback(async () => {
      setHasGenerated(true);
@@ -866,7 +904,7 @@ function App() {
          const newAnsweredQuestions = [...answeredQuestions, ...qaPairs.map(a => a.question)];
 
          try {
-             const newRefinedPrompt = await refinePromptWithAllUpdates(prompt, qaPairs, graphUpdates, handleStatusUpdate, proactiveness);
+             const newRefinedPrompt = await refinePromptWithAllUpdates(prompt, qaPairs, graphUpdates, handleStatusUpdate, proactiveness, language);
              setProposedPromptState({
                  text: newRefinedPrompt,
                  qaPairs,
@@ -886,7 +924,7 @@ function App() {
          setClarifications([]);
          void processRequest(prompt, nextAnswered, mode, false, true, uploadedImages, aspectRatio, resolution, selectedModel, storyType, selectedClarificationModel, proactiveness, undefined, domainTrack).catch(() => {});
      }
-  }, [prompt, mode, lastAnalyzedPrompt, lastAnalyzedMode, processRequest, uploadedImages, aspectRatio, resolution, selectedModel, storyType, selectedClarificationModel, pendingClarificationAnswers, pendingAttributeUpdates, pendingRelationshipUpdates, isUpdatingPrompt, answeredQuestions, beliefGraph, handleStatusUpdate, proactiveness, gamePortalTrack, cryptoSolanaTrack]);
+  }, [prompt, mode, lastAnalyzedPrompt, lastAnalyzedMode, processRequest, uploadedImages, aspectRatio, resolution, selectedModel, storyType, selectedClarificationModel, pendingClarificationAnswers, pendingAttributeUpdates, pendingRelationshipUpdates, isUpdatingPrompt, answeredQuestions, beliefGraph, handleStatusUpdate, proactiveness, gamePortalTrack, cryptoSolanaTrack, language]);
 
   const handleSelectApiKey = async () => {
       const win = window as any;
@@ -914,7 +952,7 @@ function App() {
     const newAnsweredQuestions = [...answeredQuestions, ...qaPairs.map(a => a.question)];
 
     try {
-        const newRefinedPrompt = await refinePromptWithAllUpdates(prompt, qaPairs, graphUpdates, handleStatusUpdate, proactiveness);
+        const newRefinedPrompt = await refinePromptWithAllUpdates(prompt, qaPairs, graphUpdates, handleStatusUpdate, proactiveness, language);
         setProposedPromptState({
             text: newRefinedPrompt,
             qaPairs,
@@ -1083,8 +1121,8 @@ function App() {
       await saveWorkspaceSnapshot(snap);
       const updated = await saveSessionRecord(record);
       setSavedSessions(updated);
-      showTimedNotice('Đã lưu phiên chat, xử lý & kết quả vào IndexedDB.');
-  }, [buildCurrentWorkspaceSnapshot, showTimedNotice]);
+      showTimedNotice(tr('Đã lưu phiên chat, xử lý & kết quả vào IndexedDB.', 'Saved chat, analysis & outputs to IndexedDB.'));
+  }, [buildCurrentWorkspaceSnapshot, showTimedNotice, tr]);
 
   const handleRestoreSession = useCallback((session: SavedSessionRecord) => {
       analysisRequestIdRef.current += 1;
@@ -1125,8 +1163,8 @@ function App() {
           setBlueprints(prev => ({ ...prev, [session.mode]: session.results.blueprint }));
       }
       setGalleryErrors(prev => ({ ...prev, [session.mode]: session.results.error }));
-      showTimedNotice('Đã khôi phục phiên từ IndexedDB.');
-  }, [showTimedNotice]);
+      showTimedNotice(tr('Đã khôi phục phiên từ IndexedDB.', 'Restored session from IndexedDB.'));
+  }, [showTimedNotice, tr]);
 
   const handleDeleteSession = useCallback(async (id: string) => {
       const updated = await deleteSessionRecord(id);
@@ -1136,22 +1174,22 @@ function App() {
   const handleClearAllSessions = useCallback(async () => {
       const updated = await clearAllSessions();
       setSavedSessions(updated);
-      showTimedNotice('Đã xóa lịch sử phiên trong IndexedDB.');
-  }, [showTimedNotice]);
+      showTimedNotice(tr('Đã xóa lịch sử phiên trong IndexedDB.', 'Cleared IndexedDB session archive.'));
+  }, [showTimedNotice, tr]);
 
   const handleDownloadAllJson = useCallback(() => {
       const snapshot = buildCurrentWorkspaceSnapshot();
       const bundle = buildExportBundle(snapshot, savedSessions);
       const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
       triggerJsonDownload(`proactive-cocreator-indexeddb-${stamp}.json`, bundle);
-      showTimedNotice('Đã tải xuống file JSON đầy đủ.');
-  }, [buildCurrentWorkspaceSnapshot, savedSessions, showTimedNotice]);
+      showTimedNotice(tr('Đã tải xuống file JSON đầy đủ.', 'Downloaded full JSON backup.'));
+  }, [buildCurrentWorkspaceSnapshot, savedSessions, showTimedNotice, tr]);
 
   const handleDownloadSingleJson = useCallback((session: SavedSessionRecord) => {
       const stamp = new Date(session.updatedAt || Date.now()).toISOString().slice(0, 10);
       triggerJsonDownload(`cocreator-${session.mode}-${stamp}.json`, session);
-      showTimedNotice('Đã tải xuống JSON của phiên.');
-  }, [showTimedNotice]);
+      showTimedNotice(tr('Đã tải xuống JSON của phiên.', 'Downloaded session JSON.'));
+  }, [showTimedNotice, tr]);
 
   const handleTriggerUploadJson = useCallback(() => {
       jsonUploadInputRef.current?.click();
@@ -1162,13 +1200,13 @@ function App() {
       e.target.value = '';
       if (!file) return;
       if (file.size > 50 * 1024 * 1024) {
-          showTimedNotice('File JSON vượt quá giới hạn 50MB.');
+          showTimedNotice(tr('File JSON vượt quá giới hạn 50MB.', 'JSON file exceeds 50MB limit.'));
           return;
       }
       try {
           const text = await file.text();
           const currentSnap = buildCurrentWorkspaceSnapshot();
-          const imported = parseImportedJsonBundle(text, currentSnap);
+          const imported = parseImportedJsonBundle(text, currentSnap, language);
 
           if (imported.sessions.length > 0) {
               const updatedList = await replaceAllSessions(imported.sessions);
@@ -1178,6 +1216,9 @@ function App() {
           if (imported.workspace) {
               const ws = imported.workspace;
               await saveWorkspaceSnapshot(ws);
+              if (ws.language) {
+                  setLanguage(ws.language);
+              }
               setMode(ws.mode);
               modeRef.current = ws.mode;
               setGamePortalTrack(ws.gamePortalTrack);
@@ -1217,9 +1258,9 @@ function App() {
           setShowHistoryModal(false);
           showTimedNotice(imported.summary);
       } catch (err: any) {
-          showTimedNotice(err?.message || 'Không thể đọc file JSON.');
+          showTimedNotice(err?.message || tr('Không thể đọc file JSON.', 'Failed to read JSON file.'));
       }
-  }, [buildCurrentWorkspaceSnapshot, handleRestoreSession, showTimedNotice]);
+  }, [buildCurrentWorkspaceSnapshot, handleRestoreSession, showTimedNotice, language, setLanguage, tr]);
 
   const handleUseAsReference = useCallback((imageDataUrl: string) => {
     try {
@@ -1237,30 +1278,27 @@ function App() {
 
       setUploadedImages(prev => [...prev, newImage]);
       setMobileView('editor'); // Switch to editor so the user sees the new reference
-      handleStatusUpdate("Image added as reference.");
-      setTimeout(() => setStatusNotification(prev => prev === "Image added as reference." ? null : prev), 3000);
+      showTimedNotice(tr('Đã thêm ảnh làm tham chiếu.', 'Image added as reference.'));
     } catch (e) {
       console.warn("Failed to parse image data URL", e);
     }
-  }, [handleStatusUpdate]);
+  }, [showTimedNotice, tr]);
 
   const handleApplyStoryToPrompt = useCallback(() => {
     if (story) {
         setPrompt(story);
         setIsOutdated(true);
         setMobileView('editor');
-        handleStatusUpdate("Story applied to prompt.");
-        setTimeout(() => setStatusNotification(prev => prev === "Story applied to prompt." ? null : prev), 3000);
+        showTimedNotice(tr('Đã áp dụng nội dung truyện vào prompt.', 'Story applied to prompt.'));
     }
-  }, [story, handleStatusUpdate]);
+  }, [story, showTimedNotice, tr]);
 
   const handleApplySnippetToPrompt = useCallback((snippet: string) => {
     setPrompt(snippet);
     setIsOutdated(true);
     setMobileView('editor');
-    handleStatusUpdate("Domain specification applied to prompt.");
-    setTimeout(() => setStatusNotification(prev => prev === "Domain specification applied to prompt." ? null : prev), 3000);
-  }, [handleStatusUpdate]);
+    showTimedNotice(tr('Đã áp dụng thông số ngành vào prompt.', 'Domain specification applied to prompt.'));
+  }, [showTimedNotice, tr]);
   
   const ToolTabButton = ({ label, tab, current }: { label: string, tab: ToolTab, current: ToolTab }) => (
       <button 
@@ -1305,8 +1343,8 @@ function App() {
                     ) : (
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1-1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
                     )}
-                    <span className="text-sm font-medium flex-1">{isUpdatingPrompt ? "Refining prompt..." : statusNotification}</span>
-                    {!isUpdatingPrompt && <button onClick={() => setStatusNotification(null)} className="ml-auto text-amber-600 dark:text-amber-300 p-1 hover:bg-amber-200 dark:hover:bg-amber-800 rounded-full flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-amber-500" aria-label="Close notification"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>}
+                    <span className="text-sm font-medium flex-1">{isUpdatingPrompt ? tr('Đang tinh chỉnh prompt...', 'Refining prompt...') : statusNotification}</span>
+                    {!isUpdatingPrompt && <button onClick={() => setStatusNotification(null)} className="ml-auto text-amber-600 dark:text-amber-300 p-1 hover:bg-amber-200 dark:hover:bg-amber-800 rounded-full flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-amber-500" aria-label={tr('Đóng thông báo', 'Close notification')}><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>}
                 </div>
             </div>
         )}
@@ -1319,23 +1357,23 @@ function App() {
                     </svg>
                     <div className="flex-1 pr-6">
                         <p className="text-sm font-bold">
-                          Switched to{' '}
+                          {tr('Đã chuyển sang chế độ ', 'Switched to ')}
                           {mode === 'image'
-                            ? 'Image'
+                            ? tr('Ảnh', 'Image')
                             : mode === 'video'
                               ? 'Video'
                               : mode === 'game-portal'
-                                ? 'Game Portal (Game9K)'
+                                ? tr('Cổng Game (Game9K)', 'Game Portal (Game9K)')
                                 : mode === 'crypto-solana'
                                   ? 'Crypto · Solana'
-                                  : 'Story'}{' '}
-                          Mode
+                                  : tr('Truyện', 'Story')}
+                          {tr('', ' Mode')}
                         </p>
                         <p className="text-xs mt-1">
-                            Clarifications, graph and attributes are from the previous mode. Click <span className="font-bold italic">Refine prompt</span> again to update them for this mode.
+                            {tr('Câu hỏi làm rõ, biểu đồ và thuộc tính đang lấy từ chế độ trước. Nhấn ', 'Clarifications, graph and attributes are from the previous mode. Click ')}<span className="font-bold italic">{tr('Tinh chỉnh prompt', 'Refine prompt')}</span>{tr(' để cập nhật theo chế độ này.', ' again to update them for this mode.')}
                         </p>
                     </div>
-                    <button onClick={() => setShowModeChangePopup(false)} className="absolute top-3 right-3 text-blue-600 dark:text-blue-300 p-1 hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label="Close">
+                    <button onClick={() => setShowModeChangePopup(false)} className="absolute top-3 right-3 text-blue-600 dark:text-blue-300 p-1 hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label={tr('Đóng', 'Close')}>
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                 </div>
@@ -1384,19 +1422,19 @@ function App() {
 
                 <div className="z-30 flex flex-shrink-0 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 justify-between items-center pr-2 shadow-sm sticky top-0">
                     <div className="flex flex-1">
-                        <ToolTabButton label="Clarifications" tab="clarify" current={activeToolTab} />
-                        <ToolTabButton label="Belief Graph" tab="graph" current={activeToolTab} />
+                        <ToolTabButton label={tr('Làm rõ', 'Clarifications')} tab="clarify" current={activeToolTab} />
+                        <ToolTabButton label={tr('Biểu đồ niềm tin', 'Belief Graph')} tab="graph" current={activeToolTab} />
                         <ToolTabButton
                             label={
                               mode === 'image'
-                                ? 'Image Attributes'
+                                ? tr('Thuộc tính ảnh', 'Image Attributes')
                                 : mode === 'video'
-                                  ? 'Video Attributes'
+                                  ? tr('Thuộc tính video', 'Video Attributes')
                                   : mode === 'game-portal'
-                                    ? 'Portal Attributes'
+                                    ? tr('Thuộc tính Portal', 'Portal Attributes')
                                     : mode === 'crypto-solana'
-                                      ? 'Protocol Attributes'
-                                      : 'Story Attributes'
+                                      ? tr('Thuộc tính giao thức', 'Protocol Attributes')
+                                      : tr('Thuộc tính truyện', 'Story Attributes')
                             }
                             tab="attributes"
                             current={activeToolTab}
@@ -1410,26 +1448,26 @@ function App() {
                         <div className="flex-shrink-0 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800 p-2 flex justify-between items-center animate-fade-in z-20 gap-2">
                             <div className="text-xs md:text-sm text-blue-800 dark:text-blue-200 font-bold flex items-center gap-1.5 flex-1 min-w-0">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                <span className="truncate">{totalUpdateCount} pending change{totalUpdateCount !== 1 ? 's' : ''}</span>
+                                <span className="truncate">{tr(`${totalUpdateCount} thay đổi chờ áp dụng`, `${totalUpdateCount} pending change${totalUpdateCount !== 1 ? 's' : ''}`)}</span>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                                 <button 
                                     onClick={clearPendingUpdates} 
                                     disabled={isUpdatingPrompt}
-                                    className={`text-xs md:text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 ${isUpdatingPrompt ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    className={`text-xs md:text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors whitespace-nowrap shrink-0 focus:outline-none focus:ring-2 focus:ring-red-500 ${isUpdatingPrompt ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
-                                    Cancel changes
+                                    {tr('Hủy thay đổi', 'Cancel changes')}
                                 </button>
                                 <button 
                                     onClick={handleApplyAllUpdates} 
                                     disabled={isUpdatingPrompt || isGenerating} 
-                                    title={isGenerating ? "Cannot update prompt while generation is in progress" : undefined}
-                                    className={`bg-blue-600 hover:bg-blue-700 text-white text-xs md:text-sm font-normal py-1 px-3 rounded-md shadow-sm flex items-center gap-1.5 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 ${(isUpdatingPrompt || isGenerating) ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-md'}`}
+                                    title={isGenerating ? tr('Không thể cập nhật prompt khi đang tạo kết quả', 'Cannot update prompt while generation is in progress') : undefined}
+                                    className={`bg-blue-600 hover:bg-blue-700 text-white text-xs md:text-sm font-normal py-1 px-3 rounded-md shadow-sm flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 ${(isUpdatingPrompt || isGenerating) ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-md'}`}
                                 >
-                                    {isUpdatingPrompt ? "Updating..." : (
+                                    {isUpdatingPrompt ? tr('Đang cập nhật...', 'Updating...') : (
                                         <>
-                                            <span className="sm:hidden">Update</span>
-                                            <span className="hidden sm:inline">Update prompt</span>
+                                            <span className="sm:hidden">{tr('Cập nhật', 'Update')}</span>
+                                            <span className="hidden sm:inline">{tr('Cập nhật prompt', 'Update prompt')}</span>
                                         </>
                                     )}
                                 </button>
@@ -1503,7 +1541,7 @@ function App() {
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
-                    <span className="text-[11px] font-normal uppercase tracking-tight">Editor</span>
+                    <span className="text-[11px] font-normal uppercase tracking-tight">{tr('Soạn thảo', 'Editor')}</span>
                 </button>
                 <button 
                     onClick={() => setMobileView('preview')} 
@@ -1516,7 +1554,7 @@ function App() {
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    <span className="text-[11px] font-normal uppercase tracking-tight">Preview</span>
+                    <span className="text-[11px] font-normal uppercase tracking-tight">{tr('Kết quả', 'Preview')}</span>
                 </button>
             </div>
         </div>
@@ -1528,10 +1566,9 @@ function App() {
                     className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full p-6 relative border border-gray-200 dark:border-gray-700 overflow-y-auto max-h-[90vh] outline-none"
                     tabIndex={-1}
                 >
-                    {/* ... Intro Content ... */}
                     <div className="text-center mb-6">
                         <h2 id="intro-modal-title" className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-1">Proactive Co-Creator</h2>
-                        <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">Your Intelligent Creative Partner</p>
+                        <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">{tr('Cộng sự sáng tạo & thiết kế kiến trúc thông minh', 'Your Intelligent Creative Partner')}</p>
                     </div>
 
                     <div className="space-y-5 mb-8">
@@ -1540,9 +1577,9 @@ function App() {
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
                             </div>
                             <div>
-                                <h3 className="font-bold text-gray-800 dark:text-gray-100 text-base">1. Visualize Interpretation</h3>
+                                <h3 className="font-bold text-gray-800 dark:text-gray-100 text-base">{tr('1. Trực quan hóa cách hiểu', '1. Visualize Interpretation')}</h3>
                                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
-                                    The AI proactively maps your prompt into a <strong>Belief Graph</strong> and asks questions to reveal its hidden assumptions.
+                                    {tr('AI chủ động chuyển prompt của bạn thành ', 'The AI proactively maps your prompt into a ')}<strong>{tr('Biểu đồ niềm tin', 'Belief Graph')}</strong>{tr(' và đặt câu hỏi để bộc lộ các giả định ngầm định.', ' and asks questions to reveal its hidden assumptions.')}
                                 </p>
                             </div>
                         </div>
@@ -1552,9 +1589,9 @@ function App() {
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                             </div>
                             <div>
-                                <h3 className="font-bold text-gray-800 dark:text-gray-100 text-base">2. Align Intent</h3>
+                                <h3 className="font-bold text-gray-800 dark:text-gray-100 text-base">{tr('2. Đồng bộ ý định', '2. Align Intent')}</h3>
                                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
-                                    Edit the graph or answer questions to correct the AI. Click <strong>Update Prompt</strong> to sync your vision.
+                                    {tr('Chỉnh sửa biểu đồ hoặc trả lời câu hỏi để điều chỉnh AI. Nhấn ', 'Edit the graph or answer questions to correct the AI. Click ')}<strong>{tr('Cập nhật prompt', 'Update Prompt')}</strong>{tr(' để đồng bộ.', ' to sync your vision.')}
                                 </p>
                             </div>
                         </div>
@@ -1564,9 +1601,9 @@ function App() {
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                             </div>
                             <div>
-                                <h3 className="font-bold text-gray-800 dark:text-gray-100 text-base">3. Create</h3>
+                                <h3 className="font-bold text-gray-800 dark:text-gray-100 text-base">{tr('3. Khởi tạo đa phương thức', '3. Create')}</h3>
                                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
-                                    Generate <strong>Images</strong>, <strong>Stories</strong>, <strong>Videos</strong>, <strong>Game9K Portals</strong>, or <strong>Solana / Pump.fun Blueprints</strong> with an AI that aligns with your intent.
+                                    {tr('Tạo ', 'Generate ')}<strong>{tr('Ảnh', 'Images')}</strong>, <strong>{tr('Truyện', 'Stories')}</strong>, <strong>Video</strong>, <strong>{tr('Cổng Game9K', 'Game9K Portals')}</strong>{tr(' hoặc ', ', or ')}<strong>{tr('Bản thiết kế Solana / Pump.fun', 'Solana / Pump.fun Blueprints')}</strong>{tr(' khớp chính xác ý định của bạn.', ' with an AI that aligns with your intent.')}
                                 </p>
                             </div>
                         </div>
@@ -1577,7 +1614,7 @@ function App() {
                             onClick={closeIntroModal}
                             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-normal py-3 px-4 rounded-xl shadow-lg shadow-blue-500/30 transition-all transform hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
                         >
-                            Start Creating
+                            {tr('Bắt đầu sáng tạo', 'Start Creating')}
                         </button>
                         <a
                             href="https://zi-wang.com/human-ai/"
@@ -1585,13 +1622,13 @@ function App() {
                             rel="noreferrer"
                             className="w-full text-center text-sm font-normal text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 py-2 transition-colors hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md"
                         >
-                            Learn about our research
+                            {tr('Tìm hiểu nghiên cứu của chúng tôi', 'Learn about our research')}
                         </a>
                     </div>
 
                     <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                         <p className="text-[10px] text-gray-400 dark:text-gray-500 leading-relaxed text-left">
-                            This app is intended for research. The AI is your creative partner, but it isn't perfect. Its interpretations, belief graphs, and clarifications are generated dynamically and may contain inaccuracies.
+                            {tr('Ứng dụng phục vụ nghiên cứu và thiết kế giải pháp. AI là cộng sự sáng tạo nhưng không hoàn hảo; biểu đồ niềm tin và câu hỏi làm rõ được tạo tự động và có thể chứa sai lệch.', "This app is intended for research. The AI is your creative partner, but it isn't perfect. Its interpretations, belief graphs, and clarifications are generated dynamically and may contain inaccuracies.")}
                         </p>
                     </div>
                 </div>
@@ -1606,24 +1643,23 @@ function App() {
                     onClick={e => e.stopPropagation()}
                     tabIndex={-1}
                 >
-                    {/* ... Info Content ... */}
-                    <button onClick={() => setShowInfoModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 rounded" aria-label="Close"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+                    <button onClick={() => setShowInfoModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 rounded" aria-label={tr('Đóng', 'Close')}><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
 
                     <div className="text-center mb-6">
                         <h2 id="info-modal-title" className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">Proactive Co-Creator</h2>
-                        <p className="text-gray-600 dark:text-gray-400">An Intelligent Multi-Modal & Domain Architecture Partner</p>
+                        <p className="text-gray-600 dark:text-gray-400">{tr('Cộng sự đa phương thức & Kiến trúc hệ thống thông minh', 'An Intelligent Multi-Modal & Domain Architecture Partner')}</p>
                     </div>
 
                     <div className="mb-6 text-left space-y-4">
-                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 border-b border-gray-100 dark:border-gray-700 pb-2">How it works</h3>
+                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 border-b border-gray-100 dark:border-gray-700 pb-2">{tr('Cách hoạt động', 'How it works')}</h3>
                         <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-                            Start with a prompt or image. The AI maps your idea into a <strong>Belief Graph</strong>, revealing hidden details.
+                            {tr('Bắt đầu từ một prompt hoặc ảnh mẫu. AI ánh xạ ý tưởng của bạn thành ', 'Start with a prompt or image. The AI maps your idea into a ')}<strong>{tr('Biểu đồ niềm tin', 'Belief Graph')}</strong>{tr(' để bộc lộ các chi tiết ẩn.', ', revealing hidden details.')}
                         </p>
                         <ul className="space-y-2 text-xs text-gray-500 dark:text-gray-400 list-disc pl-4 marker:text-blue-500">
-                            <li>Click <strong>nodes</strong> (circles) or <strong>edges</strong> (lines) to edit specific details.</li>
-                            <li>Answer <strong>clarifying questions</strong> to resolve ambiguities.</li>
-                            <li>Click <strong>Update Prompt</strong> to apply your changes before generating.</li>
-                            <li>Switch modes (Image / Story / Video / Game Portal / Crypto · Solana) for creative outputs or operational blueprints &amp; simulators.</li>
+                            <li>{tr('Nhấn vào ', 'Click ')}<strong>{tr('nút', 'nodes')}</strong>{tr(' (hình chữ nhật) hoặc ', ' (circles) or ')}<strong>{tr('đường nối', 'edges')}</strong>{tr(' (mũi tên) để sửa chi tiết.', ' (lines) to edit specific details.')}</li>
+                            <li>{tr('Trả lời ', 'Answer ')}<strong>{tr('câu hỏi làm rõ', 'clarifying questions')}</strong>{tr(' để xử lý các điểm mơ hồ.', ' to resolve ambiguities.')}</li>
+                            <li>{tr('Nhấn ', 'Click ')}<strong>{tr('Cập nhật prompt', 'Update Prompt')}</strong>{tr(' để áp dụng thay đổi trước khi tạo kết quả.', ' to apply your changes before generating.')}</li>
+                            <li>{tr('Chuyển chế độ (Ảnh / Truyện / Video / Cổng Game / Crypto · Solana) để tạo sản phẩm sáng tạo hoặc bản thiết kế kiến trúc & trình mô phỏng vận hành.', 'Switch modes (Image / Story / Video / Game Portal / Crypto · Solana) for creative outputs or operational blueprints & simulators.')}</li>
                         </ul>
                     </div>
 
@@ -1631,41 +1667,41 @@ function App() {
                         <a href="https://zi-wang.com/human-ai/" target="_blank" rel="noreferrer" className="flex-1 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 rounded-lg p-3 text-center transition-colors group focus:outline-none focus:ring-2 focus:ring-purple-500">
                             <div className="flex items-center justify-center gap-2 mb-0.5">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
-                                <span className="font-bold text-sm">Our Research</span>
+                                <span className="font-bold text-sm">{tr('Nghiên cứu', 'Our Research')}</span>
                             </div>
-                            <div className="text-[10px] opacity-80 group-hover:underline">Human-AI Alignment</div>
+                            <div className="text-[10px] opacity-80 group-hover:underline">{tr('Đồng bộ Human-AI', 'Human-AI Alignment')}</div>
                         </a>
                         <a href="https://zi-wang.com/co-creator-feedback/" target="_blank" rel="noreferrer" className="flex-1 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-center transition-colors group focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <div className="flex items-center justify-center gap-2 mb-0.5">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>
-                                <span className="font-bold text-sm">Give Feedback</span>
+                                <span className="font-bold text-sm">{tr('Góp ý', 'Give Feedback')}</span>
                             </div>
-                            <div className="text-[10px] opacity-80 group-hover:underline">Help us improve</div>
+                            <div className="text-[10px] opacity-80 group-hover:underline">{tr('Giúp chúng tôi cải thiện', 'Help us improve')}</div>
                         </a>
                     </div>
 
                     <div className="mb-6 text-left">
-                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">Pro Workflow</h3>
+                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">{tr('Quy trình chuyên nghiệp', 'Pro Workflow')}</h3>
                         <div className="space-y-4">
                             <div className="flex gap-3">
                                 <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 flex items-center justify-center text-xs font-bold mt-0.5">1</div>
                                 <div>
-                                    <h4 className="text-sm font-bold text-gray-800 dark:text-gray-100">Image Mode</h4>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Visualize your concept. Generate an image and click <strong>"Use as Reference"</strong>.</p>
+                                    <h4 className="text-sm font-bold text-gray-800 dark:text-gray-100">{tr('Chế độ Ảnh', 'Image Mode')}</h4>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{tr('Phác họa ý tưởng. Tạo ảnh và nhấn ', 'Visualize your concept. Generate an image and click ')}<strong>{tr('"Dùng làm tham chiếu"', '"Use as Reference"')}</strong>.</p>
                                 </div>
                             </div>
                             <div className="flex gap-3">
                                 <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 flex items-center justify-center text-xs font-bold mt-0.5">2</div>
                                 <div>
-                                    <h4 className="text-sm font-bold text-gray-800 dark:text-gray-100">Story Mode (Video Description)</h4>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Switch to <strong>"Video"</strong> type in settings. Generate a cinematic description and copy it.</p>
+                                    <h4 className="text-sm font-bold text-gray-800 dark:text-gray-100">{tr('Chế độ Truyện (Kịch bản Video)', 'Story Mode (Video Description)')}</h4>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{tr('Chuyển sang loại ', 'Switch to ')}<strong>{tr('"Kịch bản Video"', '"Video"')}</strong>{tr(' để tạo mô tả điện ảnh và chép vào prompt.', ' type in settings. Generate a cinematic description and copy it.')}</p>
                                 </div>
                             </div>
                             <div className="flex gap-3">
                                 <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 flex items-center justify-center text-xs font-bold mt-0.5">3</div>
                                 <div>
-                                    <h4 className="text-sm font-bold text-gray-800 dark:text-gray-100">Video Mode</h4>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Paste the description. Use the reference image. Generate your video.</p>
+                                    <h4 className="text-sm font-bold text-gray-800 dark:text-gray-100">{tr('Chế độ Video', 'Video Mode')}</h4>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{tr('Dán mô tả, đính kèm ảnh tham chiếu và khởi tạo video.', 'Paste the description. Use the reference image. Generate your video.')}</p>
                                 </div>
                             </div>
                         </div>
@@ -1679,10 +1715,10 @@ function App() {
                             }}
                             className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
                         >
-                            View Welcome Screen
+                            {tr('Xem màn hình chào mừng', 'View Welcome Screen')}
                         </button>
                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                            Questions? Reach out to <a href="https://zi-wang.com" target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">Zi Wang</a>.
+                            {tr('Thắc mắc? Liên hệ ', 'Questions? Reach out to ')}<a href="https://zi-wang.com" target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">Zi Wang</a>.
                         </p>
                     </div>
                 </div>

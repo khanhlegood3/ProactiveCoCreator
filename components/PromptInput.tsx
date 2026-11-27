@@ -17,6 +17,7 @@ import {
 } from '../types';
 import { WrenchIcon } from './icons';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const MAX_UPLOAD_DIMENSION = 1024;
 
@@ -77,28 +78,6 @@ const SUPPORTED_MIME_TYPES = [
   'image/webp',
   'image/heic',
   'image/heif',
-];
-
-const GAME_PORTAL_PRESETS = [
-  {
-    label: 'Game9K Phase 1 (Playtest + Receipt Gate)',
-    text: 'Thiết kế mô hình Game9K Giai đoạn 1 lấy PlaytestCloud B2B làm lõi kiếm tiền, dùng hạ tầng HTML5 không cần cài đặt chuẩn Poki, bộ chỉ số Voodoo Gate (crash rate <= 1.5%, completion >= 68%, D1 retention >= 32%) và cổng biên bản USDC/USDT Escrow đối soát tự động 100% để loại bỏ lỗi Delayed Delivery.',
-  },
-  {
-    label: 'Phase 2 Web Shop & Tournament Escrow',
-    text: 'Mở rộng Game9K sang Giai đoạn 2: phân phối game vượt Gate từ Giai đoạn 1 kèm Web Shop LiveOps (Battle Pass $15-$25, gói 12,000 Cyber Gems $99.99) và Giải đấu Pro League Qualifier USDC Escrow $249 cho thị trường TP.HCM, Los Angeles, Tokyo, Seoul.',
-  },
-];
-
-const CRYPTO_SOLANA_PRESETS = [
-  {
-    label: 'Pump.fun Bonding Curve + Creator Split',
-    text: 'Thiết kế cơ chế phát hành token trên Pump.fun (Solana SPL) với Bonding Curve 85 SOL trước khi graduate sang Raydium, chia Creator Fee & Protocol Treasury cho hệ sinh thái Game9K kèm cơ chế chống sybil.',
-  },
-  {
-    label: 'Solana USDC/USDT Escrow Rail',
-    text: 'Thiết kế kiến trúc thanh toán và ký quỹ PDA Escrow bằng USDC-SPL và USDT-SPL trên Solana (<400ms finality, phí ~$0.00025, 0% gateway fee) tích hợp Receipt Gate xác thực hành động chơi thử để triệt tiêu lệch đồng bộ đơn hàng.',
-  },
 ];
 
 interface PromptInputProps {
@@ -165,6 +144,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
   cryptoSolanaTrack,
   setCryptoSolanaTrack,
 }) => {
+  const { language, tr } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
   const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
@@ -174,6 +154,52 @@ const PromptInput: React.FC<PromptInputProps> = ({
 
   const infoModalRef = useFocusTrap(isInfoModalOpen);
   const disclaimerModalRef = useFocusTrap(showDisclaimerModal);
+
+  const gamePortalPresets =
+    language === 'vi'
+      ? [
+          {
+            label: 'Game9K GĐ1 (Playtest + Receipt Gate)',
+            text: 'Thiết kế mô hình Game9K Giai đoạn 1 lấy PlaytestCloud B2B làm lõi kiếm tiền, dùng hạ tầng HTML5 không cần cài đặt chuẩn Poki, bộ chỉ số Voodoo Gate (crash rate <= 1.5%, completion >= 68%, D1 retention >= 32%) và cổng biên bản USDC/USDT Escrow đối soát tự động 100% để loại bỏ lỗi Delayed Delivery.',
+          },
+          {
+            label: 'GĐ2 Web Shop & Ký quỹ Giải đấu',
+            text: 'Mở rộng Game9K sang Giai đoạn 2: phân phối game vượt Gate từ Giai đoạn 1 kèm Web Shop LiveOps (Battle Pass $15-$25, gói 12,000 Cyber Gems $99.99) và Giải đấu Pro League Qualifier USDC Escrow $249 cho thị trường TP.HCM, Los Angeles, Tokyo, Seoul.',
+          },
+        ]
+      : [
+          {
+            label: 'Game9K Phase 1 (Playtest + Receipt Gate)',
+            text: 'Design Game9K Phase 1 using PlaytestCloud B2B as the early monetization core, Poki-style zero-install HTML5 SDK, Voodoo Gate metrics (crash rate <= 1.5%, completion >= 68%, D1 retention >= 32%), and a 100% auto-reconciled USDC/USDT Escrow receipt gate to eliminate Delayed Delivery errors.',
+          },
+          {
+            label: 'Phase 2 Web Shop & Tournament Escrow',
+            text: 'Expand Game9K to Phase 2: distribute Phase 1 gate-passing titles with Web Shop LiveOps (Battle Pass $15-$25, 12,000 Cyber Gems $99.99) and Pro League Qualifier USDC Escrow $249 tournaments across TP.HCM, Los Angeles, Tokyo, and Seoul.',
+          },
+        ];
+
+  const cryptoSolanaPresets =
+    language === 'vi'
+      ? [
+          {
+            label: 'Pump.fun Bonding Curve + Chia phí Creator',
+            text: 'Thiết kế cơ chế phát hành token trên Pump.fun (Solana SPL) với Bonding Curve 85 SOL trước khi graduate sang Raydium, chia Creator Fee & Protocol Treasury cho hệ sinh thái Game9K kèm cơ chế chống sybil.',
+          },
+          {
+            label: 'Cổng ký quỹ Solana USDC/USDT Escrow',
+            text: 'Thiết kế kiến trúc thanh toán và ký quỹ PDA Escrow bằng USDC-SPL và USDT-SPL trên Solana (<400ms finality, phí ~$0.00025, 0% gateway fee) tích hợp Receipt Gate xác thực hành động chơi thử để triệt tiêu lệch đồng bộ đơn hàng.',
+          },
+        ]
+      : [
+          {
+            label: 'Pump.fun Bonding Curve + Creator Split',
+            text: 'Design a Pump.fun token launch on Solana SPL with an 85 SOL bonding curve before graduating to Raydium, routing Creator Fee & Protocol Treasury to the Game9K ecosystem with anti-sybil protection.',
+          },
+          {
+            label: 'Solana USDC/USDT Escrow Rail',
+            text: 'Design a Solana PDA Escrow settlement architecture using USDC-SPL and USDT-SPL (<400ms finality, ~$0.00025 tx fee, 0% gateway fee) integrated with a Proof-of-Play Receipt Gate to prevent order desync.',
+          },
+        ];
 
   const handleUploadClick = () => {
     if (!hasAcceptedDisclaimer) {
@@ -241,13 +267,35 @@ const PromptInput: React.FC<PromptInputProps> = ({
     Object.keys(pendingAttributeUpdates).length > 0 ||
     Object.keys(pendingRelationshipUpdates).length > 0;
 
-  const generateLabel = isIndustryMode ? 'Generate Blueprint' : 'Generate';
+  const generateLabel = isIndustryMode
+    ? tr('Tạo Blueprint', 'Generate Blueprint')
+    : tr('Tạo kết quả', 'Generate');
+
   const generateTooltipText =
     mode === 'game-portal'
-      ? `Generate Game9K Blueprint & Tiers${hasUpdates ? ' with updates' : ''}`
+      ? tr(
+          `Tạo Blueprint & Gói giá Game9K${hasUpdates ? ' kèm cập nhật' : ''}`,
+          `Generate Game9K Blueprint & Tiers${hasUpdates ? ' with updates' : ''}`
+        )
       : mode === 'crypto-solana'
-        ? `Generate Pump.fun / Solana / USDT-USDC Blueprint${hasUpdates ? ' with updates' : ''}`
-        : `Generate ${mode === 'story' ? 'a story' : mode === 'video' ? 'a video' : 'images'} based on your prompt${hasUpdates ? ' and updates' : ''}`;
+        ? tr(
+            `Tạo Blueprint Pump.fun / Solana / USDT-USDC${hasUpdates ? ' kèm cập nhật' : ''}`,
+            `Generate Pump.fun / Solana / USDT-USDC Blueprint${hasUpdates ? ' with updates' : ''}`
+          )
+        : mode === 'story'
+          ? tr(
+              `Tạo câu chuyện dựa trên prompt${hasUpdates ? ' và các cập nhật' : ''}`,
+              `Generate a story based on your prompt${hasUpdates ? ' and updates' : ''}`
+            )
+          : mode === 'video'
+            ? tr(
+                `Tạo video dựa trên prompt${hasUpdates ? ' và các cập nhật' : ''}`,
+                `Generate a video based on your prompt${hasUpdates ? ' and updates' : ''}`
+              )
+            : tr(
+                `Tạo hình ảnh dựa trên prompt${hasUpdates ? ' và các cập nhật' : ''}`,
+                `Generate images based on your prompt${hasUpdates ? ' and updates' : ''}`
+              );
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -297,12 +345,12 @@ const PromptInput: React.FC<PromptInputProps> = ({
       <div className="px-3 sm:px-4 py-2 bg-transparent flex flex-wrap justify-between items-center gap-2 relative z-[60]">
         <div className="flex items-center gap-2">
           <h2 className="font-display text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-200 tracking-tight whitespace-nowrap shrink-0">
-            Prompt Studio
+            {tr('Xưởng Prompt', 'Prompt Studio')}
           </h2>
 
           {/* Settings Button & Popover */}
           <div className="relative" ref={settingsRef}>
-            <Tooltip content="Configure generation settings">
+            <Tooltip content={tr('Cấu hình mô hình & tham số tạo', 'Configure generation settings')}>
               <button
                 onClick={() => setShowSettings(!showSettings)}
                 className={`flex items-center justify-center p-1.5 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
@@ -310,16 +358,18 @@ const PromptInput: React.FC<PromptInputProps> = ({
                     ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
                     : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
-                aria-label="Model Settings"
+                aria-label={tr('Cài đặt mô hình', 'Model Settings')}
               >
                 <WrenchIcon className="h-4 w-4" />
               </button>
             </Tooltip>
 
             {showSettings && (
-              <div className="absolute top-full left-0 mt-2 w-52 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-3 flex flex-col gap-3 animate-fade-in z-[100]">
+              <div className="absolute top-full left-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-3 flex flex-col gap-3 animate-fade-in z-[100]">
                 <div className="flex flex-col gap-1">
-                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Model</span>
+                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                    {tr('Mô hình', 'Model')}
+                  </span>
                   <select
                     value={selectedModel}
                     onChange={(e) => setSelectedModel(e.target.value)}
@@ -334,28 +384,32 @@ const PromptInput: React.FC<PromptInputProps> = ({
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Clarification Model</span>
+                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                    {tr('Mô hình làm rõ', 'Clarification Model')}
+                  </span>
                   <select
                     value={selectedClarificationModel}
                     onChange={(e) => setSelectedClarificationModel(e.target.value)}
                     className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-xs text-gray-700 dark:text-gray-200 focus:ring-1 focus:ring-blue-500 focus:outline-none"
                   >
-                    <option value="gemini-3.1-flash-lite-preview">Lite (Fastest)</option>
-                    <option value="gemini-3-flash-preview">Flash (Balanced)</option>
-                    <option value="gemini-3.1-pro-preview">Pro (Deepest)</option>
+                    <option value="gemini-3.1-flash-lite-preview">{tr('Lite (Nhanh nhất)', 'Lite (Fastest)')}</option>
+                    <option value="gemini-3-flash-preview">{tr('Flash (Cân bằng)', 'Flash (Balanced)')}</option>
+                    <option value="gemini-3.1-pro-preview">{tr('Pro (Chuyên sâu)', 'Pro (Deepest)')}</option>
                   </select>
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">AI Proactiveness</span>
+                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                    {tr('Độ chủ động AI', 'AI Proactiveness')}
+                  </span>
                   <select
                     value={proactiveness}
                     onChange={(e) => setProactiveness(e.target.value as Proactiveness)}
                     className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-xs text-gray-700 dark:text-gray-200 focus:ring-1 focus:ring-blue-500 focus:outline-none"
                   >
-                    <option value="low">Low (Strict to prompt)</option>
-                    <option value="medium">Medium (Balanced)</option>
-                    <option value="high">High (Creative liberty)</option>
+                    <option value="low">{tr('Thấp (Bám sát prompt)', 'Low (Strict to prompt)')}</option>
+                    <option value="medium">{tr('Trung bình (Cân bằng)', 'Medium (Balanced)')}</option>
+                    <option value="high">{tr('Cao (Sáng tạo mở)', 'High (Creative liberty)')}</option>
                   </select>
                 </div>
               </div>
@@ -364,7 +418,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5 min-w-0 max-w-full">
-          {/* Mode Selector - scrollable on tight screens, single-line */}
+          {/* Mode Selector */}
           <div className="flex items-center bg-gray-100 dark:bg-gray-700/60 p-1 rounded-lg overflow-x-auto no-scrollbar gap-1 border border-gray-200/80 dark:border-gray-700">
             <button
               onClick={() => setMode('image')}
@@ -374,7 +428,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
                   : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
-              Image
+              {tr('Ảnh', 'Image')}
             </button>
 
             <button
@@ -385,7 +439,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
                   : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
-              Story
+              {tr('Truyện', 'Story')}
             </button>
 
             <button
@@ -407,7 +461,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
                   : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
-              Game Portal
+              {tr('Cổng Game', 'Game Portal')}
             </button>
 
             <button
@@ -422,11 +476,11 @@ const PromptInput: React.FC<PromptInputProps> = ({
             </button>
           </div>
 
-          <Tooltip content="How to use" position="bottom-right">
+          <Tooltip content={tr('Hướng dẫn sử dụng', 'How to use')} position="bottom-right">
             <button
               className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex items-center justify-center p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 shrink-0"
               onClick={() => setIsInfoModalOpen(true)}
-              aria-label="Info about modes and refining"
+              aria-label={tr('Thông tin chế độ và tinh chỉnh', 'Info about modes and refining')}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                 <path
@@ -440,13 +494,13 @@ const PromptInput: React.FC<PromptInputProps> = ({
         </div>
       </div>
 
-      {/* Industry Preset Strip when in Game Portal or Crypto Solana mode */}
+      {/* Industry Preset Strip */}
       {isIndustryMode && (
         <div className="px-3 pb-1 flex items-center gap-2 overflow-x-auto no-scrollbar">
           <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap shrink-0">
-            Presets:
+            {tr('Mẫu gợi ý:', 'Presets:')}
           </span>
-          {(mode === 'game-portal' ? GAME_PORTAL_PRESETS : CRYPTO_SOLANA_PRESETS).map((preset) => (
+          {(mode === 'game-portal' ? gamePortalPresets : cryptoSolanaPresets).map((preset) => (
             <button
               key={preset.label}
               type="button"
@@ -468,10 +522,16 @@ const PromptInput: React.FC<PromptInputProps> = ({
               onChange={(e) => setPrompt(e.target.value)}
               placeholder={
                 mode === 'game-portal'
-                  ? 'Describe your Game9K Playtest B2B, Poki SDK, Voodoo Gate, or USDC/USDT Receipt flow...'
+                  ? tr(
+                      'Mô tả luồng Game9K Playtest B2B, Poki SDK, Voodoo Gate hoặc biên bản USDC/USDT...',
+                      'Describe your Game9K Playtest B2B, Poki SDK, Voodoo Gate, or USDC/USDT Receipt flow...'
+                    )
                   : mode === 'crypto-solana'
-                    ? 'Describe your Pump.fun bonding curve, Solana SPL program, or USDC/USDT Escrow flow...'
-                    : 'Describe your vision here...'
+                    ? tr(
+                        'Mô tả cơ chế Pump.fun bonding curve, chương trình Solana SPL hoặc ký quỹ USDC/USDT Escrow...',
+                        'Describe your Pump.fun bonding curve, Solana SPL program, or USDC/USDT Escrow flow...'
+                      )
+                    : tr('Mô tả ý tưởng của bạn tại đây...', 'Describe your vision here...')
               }
               className={`w-full h-[94px] md:h-[115px] bg-transparent p-2.5 md:p-3 text-gray-800 dark:text-gray-100 focus:outline-none resize-none text-[13px] leading-relaxed transition-all disabled:opacity-50 disabled:pointer-events-none ${
                 isLoading ? 'opacity-50 pointer-events-none' : ''
@@ -489,7 +549,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
                         alt={`Ref ${idx}`}
                         className="h-8 w-8 md:h-10 md:w-10 object-cover rounded border border-gray-300 dark:border-gray-600 shadow-sm"
                       />
-                      <Tooltip content="Remove image" position="bottom-left" className="absolute -top-1.5 -right-1.5">
+                      <Tooltip content={tr('Xóa ảnh', 'Remove image')} position="bottom-left" className="absolute -top-1.5 -right-1.5">
                         <button
                           onClick={() => removeImage(idx)}
                           disabled={isLoading}
@@ -507,7 +567,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
                 <div className="flex gap-1.5 items-center shrink min-w-0 flex-wrap">
                   {showResolutionSelector && (
                     <div className="flex items-center gap-1.5 h-8 md:h-9 bg-gray-100/70 dark:bg-gray-900/50 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
-                      <Tooltip content="Aspect ratio" position="top-left">
+                      <Tooltip content={tr('Tỷ lệ khung hình', 'Aspect ratio')} position="top-left">
                         <select
                           value={aspectRatio}
                           onChange={(e) => setAspectRatio(e.target.value as AspectRatio)}
@@ -534,7 +594,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
                         </select>
                       </Tooltip>
                       <div className="w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
-                      <Tooltip content="Resolution" position="top">
+                      <Tooltip content={tr('Độ phân giải', 'Resolution')} position="top">
                         <select
                           value={resolution}
                           onChange={(e) => setResolution(e.target.value)}
@@ -562,7 +622,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
                             : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                         }`}
                       >
-                        Generic
+                        {tr('Tổng quát', 'Generic')}
                       </button>
                       <button
                         onClick={() => setStoryType('video-prompt')}
@@ -573,7 +633,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
                             : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                         }`}
                       >
-                        Video
+                        {tr('Kịch bản Video', 'Video')}
                       </button>
                     </div>
                   )}
@@ -583,8 +643,8 @@ const PromptInput: React.FC<PromptInputProps> = ({
                       {(
                         [
                           { id: 'playtest-b2b', label: 'Playtest B2B' },
-                          { id: 'gate-pricing', label: 'Gate & Tiers' },
-                          { id: 'distribution-liveops', label: 'Phase 2 LiveOps' },
+                          { id: 'gate-pricing', label: tr('Gate & Bảng giá', 'Gate & Tiers') },
+                          { id: 'distribution-liveops', label: tr('GĐ2 LiveOps', 'Phase 2 LiveOps') },
                         ] as const
                       ).map((t) => (
                         <button
@@ -608,7 +668,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
                       {(
                         [
                           { id: 'pumpfun-launch', label: 'Pump.fun' },
-                          { id: 'solana-escrow', label: 'Solana Escrow' },
+                          { id: 'solana-escrow', label: tr('Ký quỹ Solana', 'Solana Escrow') },
                           { id: 'usdt-usdc-rails', label: 'USDT / USDC' },
                         ] as const
                       ).map((t) => (
@@ -629,12 +689,12 @@ const PromptInput: React.FC<PromptInputProps> = ({
                   )}
 
                   {!isIndustryMode && (
-                    <Tooltip content="Upload reference images" position="bottom-left" className="h-8 md:h-9">
+                    <Tooltip content={tr('Tải ảnh tham chiếu', 'Upload reference images')} position="bottom-left" className="h-8 md:h-9">
                       <button
                         onClick={handleUploadClick}
                         disabled={isLoading}
                         className="h-8 w-8 md:h-9 md:w-9 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300 transition-all border border-gray-200 dark:border-gray-700 disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center shadow-sm"
-                        aria-label="Upload reference images"
+                        aria-label={tr('Tải ảnh tham chiếu', 'Upload reference images')}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path
@@ -651,7 +711,10 @@ const PromptInput: React.FC<PromptInputProps> = ({
 
                 <div className="flex shrink-0 h-8 md:h-9 gap-1.5 justify-end ml-auto">
                   <Tooltip
-                    content="Refine your prompt through guided questions and an editable belief graph."
+                    content={tr(
+                      'Tinh chỉnh prompt qua câu hỏi gợi ý và đồ thị niềm tin có thể chỉnh sửa.',
+                      'Refine your prompt through guided questions and an editable belief graph.'
+                    )}
                     className="h-full"
                     position="bottom-left"
                     contentClassName="w-full"
@@ -680,7 +743,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
                       )}
-                      <span>Refine prompt</span>
+                      <span>{tr('Tinh chỉnh prompt', 'Refine prompt')}</span>
                     </button>
                   </Tooltip>
 
@@ -741,11 +804,13 @@ const PromptInput: React.FC<PromptInputProps> = ({
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700">
-                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">How to use</h3>
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+                  {tr('Hướng dẫn sử dụng', 'How to use')}
+                </h3>
                 <button
                   onClick={() => setIsInfoModalOpen(false)}
                   className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
-                  aria-label="Close modal"
+                  aria-label={tr('Đóng hộp thoại', 'Close modal')}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -754,13 +819,25 @@ const PromptInput: React.FC<PromptInputProps> = ({
               </div>
               <div className="p-4 text-sm text-gray-600 dark:text-gray-300 space-y-3">
                 <p>
-                  <strong>1. Choose Domain Mode:</strong> Switch between Image, Story, Video, <strong>Game Portal (Game9K)</strong>, and <strong>Crypto · Solana (Pump.fun & USDC/USDT)</strong>.
+                  <strong>{tr('1. Chọn chế độ ngành:', '1. Choose Domain Mode:')}</strong>{' '}
+                  {tr(
+                    'Chuyển đổi giữa Ảnh, Truyện, Video, Cổng Game (Game9K) và Crypto · Solana (Pump.fun & USDC/USDT).',
+                    'Switch between Image, Story, Video, Game Portal (Game9K), and Crypto · Solana (Pump.fun & USDC/USDT).'
+                  )}
                 </p>
                 <p>
-                  <strong>2. Refine Prompt:</strong> Click "Refine prompt" to map entities into an editable Belief Graph and answer targeted clarifying questions.
+                  <strong>{tr('2. Tinh chỉnh Prompt:', '2. Refine Prompt:')}</strong>{' '}
+                  {tr(
+                    'Nhấn "Tinh chỉnh prompt" để dựng Đồ thị Niềm tin có thể chỉnh sửa và trả lời các câu hỏi làm rõ.',
+                    'Click "Refine prompt" to map entities into an editable Belief Graph and answer targeted clarifying questions.'
+                  )}
                 </p>
                 <p>
-                  <strong>3. Generate & Simulate:</strong> Generate structured blueprints alongside interactive Game9K 2026 ledger, Voodoo gate, and Solana USDC/USDT escrow simulators.
+                  <strong>{tr('3. Tạo & Mô phỏng:', '3. Generate & Simulate:')}</strong>{' '}
+                  {tr(
+                    'Tạo bản thiết kế cấu trúc kèm bộ mô phỏng sổ cái Game9K 2026, Voodoo Gate và ký quỹ Solana USDC/USDT.',
+                    'Generate structured blueprints alongside interactive Game9K 2026 ledger, Voodoo gate, and Solana USDC/USDT escrow simulators.'
+                  )}
                 </p>
               </div>
             </div>
@@ -784,11 +861,13 @@ const PromptInput: React.FC<PromptInputProps> = ({
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700">
-                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Upload Reference Image</h3>
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+                  {tr('Tải ảnh tham chiếu', 'Upload Reference Image')}
+                </h3>
                 <button
                   onClick={() => setShowDisclaimerModal(false)}
                   className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
-                  aria-label="Close modal"
+                  aria-label={tr('Đóng hộp thoại', 'Close modal')}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -797,7 +876,10 @@ const PromptInput: React.FC<PromptInputProps> = ({
               </div>
               <div className="p-4 text-sm text-gray-600 dark:text-gray-300 space-y-4">
                 <p>
-                  By using this feature, you confirm that you have the necessary rights to any content that you upload. Do not generate content that infringes on others’ intellectual property or privacy rights.
+                  {tr(
+                    'Khi sử dụng tính năng này, bạn xác nhận có đầy đủ quyền hợp pháp với nội dung tải lên. Không tạo nội dung vi phạm quyền sở hữu trí tuệ hoặc quyền riêng tư của người khác.',
+                    'By using this feature, you confirm that you have the necessary rights to any content that you upload. Do not generate content that infringes on others’ intellectual property or privacy rights.'
+                  )}
                 </p>
               </div>
               <div className="p-4 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3 bg-gray-50 dark:bg-gray-800/50">
@@ -805,13 +887,13 @@ const PromptInput: React.FC<PromptInputProps> = ({
                   onClick={() => setShowDisclaimerModal(false)}
                   className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                 >
-                  Cancel
+                  {tr('Hủy', 'Cancel')}
                 </button>
                 <button
                   onClick={handleAcceptDisclaimer}
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
                 >
-                  I Confirm
+                  {tr('Tôi xác nhận', 'I Confirm')}
                 </button>
               </div>
             </div>

@@ -1,10 +1,11 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
-*/
+ */
 
 import React, { useState, useEffect } from 'react';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface ReviewPromptModalProps {
   originalPrompt: string;
@@ -21,6 +22,7 @@ const ReviewPromptModal: React.FC<ReviewPromptModalProps> = ({
 }) => {
   const [editedPrompt, setEditedPrompt] = useState(proposedPrompt);
   const modalRef = useFocusTrap(true);
+  const { tr } = useLanguage();
 
   useEffect(() => {
     setEditedPrompt(proposedPrompt);
@@ -28,7 +30,7 @@ const ReviewPromptModal: React.FC<ReviewPromptModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[3000] bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-      <div 
+      <div
         ref={modalRef}
         role="dialog"
         aria-modal="true"
@@ -37,32 +39,41 @@ const ReviewPromptModal: React.FC<ReviewPromptModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Review Refined Prompt</h3>
-          <button 
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+            {tr('Xem lại Prompt đã tinh chỉnh', 'Review Refined Prompt')}
+          </h3>
+          <button
             onClick={onReject}
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
-            aria-label="Close modal"
+            aria-label={tr('Đóng hộp thoại', 'Close modal')}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
-        
+
         <div className="p-4 overflow-y-auto flex-1 flex flex-col gap-4">
           <p className="text-sm text-gray-600 dark:text-gray-300">
-            The AI has incorporated your clarifications and graph edits into a new prompt. You can review and edit it before applying.
+            {tr(
+              'AI đã tích hợp các câu trả lời và chỉnh sửa đồ thị của bạn thành prompt mới. Bạn có thể xem lại và chỉnh sửa trước khi áp dụng.',
+              'The AI has incorporated your clarifications and graph edits into a new prompt. You can review and edit it before applying.'
+            )}
           </p>
-          
+
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Original Prompt</label>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+              {tr('Prompt gốc', 'Original Prompt')}
+            </label>
             <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg text-sm text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 max-h-32 overflow-y-auto">
               {originalPrompt}
             </div>
           </div>
 
           <div className="flex flex-col gap-2 flex-1">
-            <label className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Refined Prompt (Editable)</label>
+            <label className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+              {tr('Prompt đã tinh chỉnh (Có thể chỉnh sửa)', 'Refined Prompt (Editable)')}
+            </label>
             <textarea
               value={editedPrompt}
               onChange={(e) => setEditedPrompt(e.target.value)}
@@ -76,13 +87,13 @@ const ReviewPromptModal: React.FC<ReviewPromptModalProps> = ({
             onClick={onReject}
             className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           >
-            Discard Changes
+            {tr('Hủy thay đổi', 'Discard Changes')}
           </button>
           <button
             onClick={() => onAccept(editedPrompt)}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
           >
-            Accept & Continue
+            {tr('Chấp nhận & Tiếp tục', 'Accept & Continue')}
           </button>
         </div>
       </div>

@@ -28,6 +28,7 @@ import {
   DomainBlueprint,
   GamePortalTrack,
   CryptoSolanaTrack,
+  Language,
 } from "../types";
 
 const createAi = () => new GoogleGenAI({ apiKey: "server-side" });
@@ -387,7 +388,8 @@ export const parsePromptToBeliefGraph = async (
   storyType: StoryType = "generic",
   proactiveness: "low" | "medium" | "high" = "medium",
   modelName: string = "gemini-3-flash-preview",
-  domainTrack?: GamePortalTrack | CryptoSolanaTrack
+  domainTrack?: GamePortalTrack | CryptoSolanaTrack,
+  language: Language = "vi"
 ): Promise<BeliefState> => {
   let modeSpecificInstructions = "";
 
@@ -516,6 +518,10 @@ export const parsePromptToBeliefGraph = async (
         - If you inferred it (e.g., "a cat and a dog" implies they are "near" each other, but the prompt didn't say it), set \`presence_in_prompt\` to \`false\`.
     3.  **Quantity:** Identify AT LEAST 1 relationship for every pair of interacting entities. Do not leave entities isolated if they are part of the same scene.
 
+    ### LANGUAGE RULE:
+    - Active UI language: ${language === "vi" ? "Vietnamese (Tiếng Việt)" : "English"}.
+    - Keep JSON schema field keys exact. Write entity names, descriptions, relationship labels, and candidate values in ${language === "vi" ? "natural Vietnamese (with standard English technical/domain terms where appropriate, or matching the user prompt)" : "English"} (except keep the root scene entity name as "The Image", "The Video", "The Game Portal", "The Protocol", "The Video Script", or "The Story" so the Attributes panel binds cleanly).
+
     Input Prompt: "${prompt}"`;
 
   const parts: any[] = [{ text: systemPrompt }];
@@ -631,7 +637,8 @@ export const updateBeliefGraph = async (
   storyType: StoryType = "generic",
   proactiveness: "low" | "medium" | "high" = "medium",
   modelName: string = "gemini-3-flash-preview",
-  domainTrack?: GamePortalTrack | CryptoSolanaTrack
+  domainTrack?: GamePortalTrack | CryptoSolanaTrack,
+  language: Language = "vi"
 ): Promise<BeliefState> => {
   let implicitEntitiesRule = "";
   let relationshipRule = "";
@@ -943,7 +950,13 @@ export const updateBeliefGraph = async (
     };
   } catch (error) {
     console.warn("Belief graph augmentation failed; falling back to full regeneration:", error);
-    if (onStatusUpdate) onStatusUpdate("Failed to augment graph. Falling back to full regeneration.");
+    if (onStatusUpdate) {
+      onStatusUpdate(
+        language === "vi"
+          ? "Không thể bổ sung đồ thị. Đang tạo lại toàn bộ đồ thị."
+          : "Failed to augment graph. Falling back to full regeneration."
+      );
+    }
     return parsePromptToBeliefGraph(
       newPrompt,
       mode,
@@ -952,7 +965,8 @@ export const updateBeliefGraph = async (
       storyType,
       proactiveness,
       modelName,
-      domainTrack
+      domainTrack,
+      language
     );
   }
 };
@@ -966,7 +980,8 @@ export const generateClarifications = async (
   storyType: StoryType = "generic",
   model: string = "gemini-3-flash-preview",
   proactiveness: "low" | "medium" | "high" = "medium",
-  domainTrack?: GamePortalTrack | CryptoSolanaTrack
+  domainTrack?: GamePortalTrack | CryptoSolanaTrack,
+  language: Language = "vi"
 ): Promise<Clarification[]> => {
   const ai = createAi();
 
@@ -1036,6 +1051,7 @@ Follow these instructions EXACTLY:
 3.  **Ease:** Provide 3-5 plausible options covering DIVERSE possibilities.
 4.  **Avoid Repetition**: DO NOT ask any of:
     ${askedQuestions.map((q) => `- "${q}"`).join("\n") || "N/A"}
+5.  **Output Language**: Write all clarifying questions and answer options in ${language === "vi" ? "clear, natural Vietnamese (keeping standard technical terms like USDC, PDA, SDK, Bonding Curve where helpful)" : "clear, natural English"}.
 
 User Prompt: "${prompt}"`;
 
@@ -1105,7 +1121,8 @@ export const refinePromptWithAllUpdates = async (
   clarifications: { question: string; answer: string }[],
   graphUpdates: GraphUpdate[],
   onStatusUpdate?: StatusUpdateCallback,
-  proactiveness: "low" | "medium" | "high" = "medium"
+  proactiveness: "low" | "medium" | "high" = "medium",
+  language: Language = "vi"
 ): Promise<string> => {
   const ai = createAi();
   let updatesPromptSection = "";
@@ -1165,6 +1182,7 @@ CRITICAL INSTRUCTIONS:
 7. DO NOT INCLUDE ANY LABELS, PREFIXES, OR FORMATTING LIKE "Updated Prompt:", "Refined Prompt:", or "**Updated Prompt:**".
 8. DO NOT provide any conversational intro or outro.
 9. DO NOT use markdown bolding for the whole prompt.
+10. Write the final refined prompt in ${language === "vi" ? "Vietnamese (or matching the Original Prompt language if clearly written in English)" : "English (or matching the Original Prompt language if clearly written in Vietnamese)"}.
 
 ${proactivenessInstruction}
 
@@ -1363,11 +1381,16 @@ export const generateVideosFromPrompt = async (
   referenceImages: ImagePart[] = [],
   aspectRatio: string = "16:9",
   model: string = "gemini-omni-1.2-flash",
-  resolution: string = "720p"
+  resolution: string = "720p",
+  language: Language = "vi"
 ): Promise<string> => {
   const ai = createAi();
   if (onStatusUpdate) {
-    onStatusUpdate("Initializing video generation (this may take 1-2 minutes)...");
+    onStatusUpdate(
+      language === "vi"
+        ? "Đang khởi tạo tạo video (có thể mất 1-2 phút)..."
+        : "Initializing video generation (this may take 1-2 minutes)..."
+    );
   }
 
   const videoParameters: any = {
@@ -1421,7 +1444,13 @@ export const generateVideosFromPrompt = async (
   while (!operation.done && pollCount < maxPolls) {
     pollCount++;
     await delay(10000);
-    if (onStatusUpdate) onStatusUpdate("Generating video frames (this may take a few minutes)...");
+    if (onStatusUpdate) {
+      onStatusUpdate(
+        language === "vi"
+          ? "Đang tạo khung hình video (có thể mất vài phút)..."
+          : "Generating video frames (this may take a few minutes)..."
+      );
+    }
     try {
       operation = await ai.operations.getVideosOperation({ operation });
       consecutivePollFailures = 0;
@@ -1496,16 +1525,18 @@ export const generateStoryFromPrompt = async (
   onStatusUpdate?: StatusUpdateCallback,
   referenceImages: ImagePart[] = [],
   model: string = "gemini-3-flash-preview",
-  storyType: StoryType = "generic"
+  storyType: StoryType = "generic",
+  language: Language = "vi"
 ): Promise<string> => {
   const ai = createAi();
+  const langNote = language === "vi" ? "Write the response in natural Vietnamese." : "Write the response in natural English.";
 
-  let instruction = `Write a short, creative story based on the prompt (and images if provided). Idea: "${prompt}"`;
+  let instruction = `Write a short, creative story based on the prompt (and images if provided). ${langNote} Idea: "${prompt}"`;
   if (storyType === "video-prompt") {
     instruction = `YOU ARE AN EXPERT IN WRITING PROMPTS FOR AI VIDEO GENERATORS. 
         Your task is to take the user's idea "${prompt}" and rewrite it into a detailed, highly visual, cinematic video generation prompt. 
         Describe camera movements, lighting, materials, and specific actions. 
-        Keep the output as a single paragraph dense with visual information.`;
+        Keep the output as a single paragraph dense with visual information. ${langNote}`;
   }
 
   const parts: any[] = [{ text: instruction }];
@@ -1543,7 +1574,8 @@ export const generateDomainBlueprint = async (
   domain: "game-portal" | "crypto-solana",
   onStatusUpdate?: StatusUpdateCallback,
   model: string = "gemini-3-flash-preview",
-  track?: GamePortalTrack | CryptoSolanaTrack
+  track?: GamePortalTrack | CryptoSolanaTrack,
+  language: Language = "vi"
 ): Promise<DomainBlueprint> => {
   const ai = createAi();
 
@@ -1563,7 +1595,7 @@ Track Focus: ${track || "pumpfun-launch"}.`;
 
   const instruction = `${domainContext}
 
-Respond in the SAME language as the user's prompt (if Vietnamese, write all field values in clear natural Vietnamese with standard technical terms; if English, write in English).
+Write all JSON field values in ${language === "vi" ? "clear, natural Vietnamese (with standard technical terms like USDC, SPL, PDA, SDK, Bonding Curve)" : "clear, natural English"}.
 Keep every item concrete, quantitative, and actionable (no vague fluff).
 
 User Specification Prompt: "${prompt}"`;

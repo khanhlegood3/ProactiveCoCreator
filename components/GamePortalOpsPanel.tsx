@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface OrderRecord {
   id: string;
@@ -55,6 +56,7 @@ interface GamePortalOpsPanelProps {
 }
 
 const GamePortalOpsPanel: React.FC<GamePortalOpsPanelProps> = ({ onApplyToPrompt }) => {
+  const { language, tr } = useLanguage();
   const [orders, setOrders] = useState<OrderRecord[]>(INITIAL_ORDERS_2026);
   const [railFilter, setRailFilter] = useState<'ALL' | 'USDC' | 'USDT' | 'Credit Card' | 'Portal Credits' | 'DELAYED'>('ALL');
   const [subTab, setSubTab] = useState<'ledger' | 'pricing' | 'gate'>('ledger');
@@ -127,7 +129,10 @@ const GamePortalOpsPanel: React.FC<GamePortalOpsPanelProps> = ({ onApplyToPrompt
 
   const handlePushConfigToPrompt = () => {
     if (!onApplyToPrompt) return;
-    const snippet = `Thiết kế kiến trúc vận hành Game9K theo mô hình 2 giai đoạn: Giai đoạn 1 Playtest B2B (PlaytestCloud + Poki HTML5 Zero-Install SDK + Receipt Gate đối soát tự động để xử lý 0% lệch đồng bộ đơn như GP-2026-9022/9014) với gói ${sessionsCount} phiên test ($${studioPricePerSession.toFixed(2)}/phiên, trả thưởng tester $${testerRewardUsdc.toFixed(2)} qua ${payoutRail === 'usdc-solana' ? 'USDC/USDT Solana 0% gateway fee' : 'Fiat Card'}, biên lợi nhuận ${pricingMath.marginPct.toFixed(1)}%). Bộ chỉ số Voodoo Gate đầu vào: Crash Rate <= ${crashRate}%, Level Completion >= ${completionRate}%, D1 Retention >= ${d1Retention}%, Avg Session >= ${avgSessionMin} phút để tuyển chọn game sang Giai đoạn 2 (Web Shop LiveOps Battle Pass $15-$25 & Tournament USDC Escrow $249) tại thị trường trọng điểm TP.HCM, LA, Tokyo, Seoul.`;
+    const snippet =
+      language === 'vi'
+        ? `Thiết kế kiến trúc vận hành Game9K theo mô hình 2 giai đoạn: Giai đoạn 1 Playtest B2B (PlaytestCloud + Poki HTML5 Zero-Install SDK + Receipt Gate đối soát tự động để xử lý 0% lệch đồng bộ đơn như GP-2026-9022/9014) với gói ${sessionsCount} phiên test ($${studioPricePerSession.toFixed(2)}/phiên, trả thưởng tester $${testerRewardUsdc.toFixed(2)} qua ${payoutRail === 'usdc-solana' ? 'USDC/USDT Solana 0% gateway fee' : 'Fiat Card'}, biên lợi nhuận ${pricingMath.marginPct.toFixed(1)}%). Bộ chỉ số Voodoo Gate đầu vào: Crash Rate <= ${crashRate}%, Level Completion >= ${completionRate}%, D1 Retention >= ${d1Retention}%, Avg Session >= ${avgSessionMin} phút để tuyển chọn game sang Giai đoạn 2 (Web Shop LiveOps Battle Pass $15-$25 & Tournament USDC Escrow $249) tại thị trường trọng điểm TP.HCM, LA, Tokyo, Seoul.`
+        : `Architect Game9K in 2 phases: Phase 1 B2B Playtest (PlaytestCloud + Poki HTML5 Zero-Install SDK + automated Receipt Gate eliminating desync errors like GP-2026-9022/9014) with a ${sessionsCount}-session batch ($${studioPricePerSession.toFixed(2)}/session, $${testerRewardUsdc.toFixed(2)} tester reward via ${payoutRail === 'usdc-solana' ? 'USDC/USDT Solana 0% gateway fee' : 'Fiat Card'}, ${pricingMath.marginPct.toFixed(1)}% net margin). Voodoo Input Gate thresholds: Crash Rate <= ${crashRate}%, Level Completion >= ${completionRate}%, D1 Retention >= ${d1Retention}%, Avg Session >= ${avgSessionMin} min to promote titles into Phase 2 (Web Shop LiveOps Battle Pass $15-$25 & Tournament USDC Escrow $249) across TP.HCM, LA, Tokyo, and Seoul.`;
     onApplyToPrompt(snippet);
   };
 
@@ -136,17 +141,17 @@ const GamePortalOpsPanel: React.FC<GamePortalOpsPanelProps> = ({ onApplyToPrompt
       {/* Top KPI Strip - 4-Column Tabular Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
         <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-900/40">
-          <div className="text-xs text-gray-500 dark:text-gray-400">2026 Portal Baseline</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">{tr('Dữ liệu Portal 2026', '2026 Portal Baseline')}</div>
           <div className="text-lg font-bold font-mono tabular-nums text-gray-900 dark:text-gray-100 mt-0.5">
             ${VERIFIED_SUMMARY.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
           </div>
           <div className="text-[11px] text-gray-500 dark:text-gray-400 font-mono tabular-nums mt-0.5">
-            {VERIFIED_SUMMARY.totalOrders} orders · Lead: TP.HCM ($314.98)
+            {tr(`${VERIFIED_SUMMARY.totalOrders} đơn · Dẫn đầu: TP.HCM ($314.98)`, `${VERIFIED_SUMMARY.totalOrders} orders · Lead: TP.HCM ($314.98)`)}
           </div>
         </div>
 
         <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-900/40">
-          <div className="text-xs text-gray-500 dark:text-gray-400">USDC + USDT Share</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">{tr('Tỷ trọng USDC + USDT', 'USDC + USDT Share')}</div>
           <div className="text-lg font-bold font-mono tabular-nums text-emerald-700 dark:text-emerald-400 mt-0.5">
             61.4%
           </div>
@@ -156,22 +161,24 @@ const GamePortalOpsPanel: React.FC<GamePortalOpsPanelProps> = ({ onApplyToPrompt
         </div>
 
         <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-900/40">
-          <div className="text-xs text-gray-500 dark:text-gray-400">Receipt Sync Risk</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">{tr('Rủi ro lệch biên bản', 'Receipt Sync Risk')}</div>
           <div className={`text-lg font-bold font-mono tabular-nums mt-0.5 ${delayedCount > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
-            {delayedCount}/{orders.length} Delayed
+            {delayedCount}/{orders.length} {tr('Chờ xử lý', 'Delayed')}
           </div>
           <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-            {delayedCount > 0 ? 'Desync on GP-9022 & GP-9014' : '100% Receipt Reconciled'}
+            {delayedCount > 0
+              ? tr('Lệch đồng bộ tại GP-9022 & GP-9014', 'Desync on GP-9022 & GP-9014')
+              : tr('Đã đối soát biên bản 100%', '100% Receipt Reconciled')}
           </div>
         </div>
 
         <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-900/40">
-          <div className="text-xs text-gray-500 dark:text-gray-400">Phase 1 Hybrid Stack</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">{tr('Hạ tầng lai Giai đoạn 1', 'Phase 1 Hybrid Stack')}</div>
           <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-1 truncate">
             PlaytestCloud + Poki + Voodoo
           </div>
           <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">
-            B2B Receipts · Zero-Install · Gate
+            {tr('Biên bản B2B · Không cài đặt · Gate', 'B2B Receipts · Zero-Install · Gate')}
           </div>
         </div>
       </div>
@@ -187,7 +194,7 @@ const GamePortalOpsPanel: React.FC<GamePortalOpsPanelProps> = ({ onApplyToPrompt
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
             }`}
           >
-            2026 Ledger & Receipt Gate
+            {tr('Sổ cái 2026 & Cổng biên bản', '2026 Ledger & Receipt Gate')}
           </button>
           <button
             onClick={() => setSubTab('pricing')}
@@ -197,7 +204,7 @@ const GamePortalOpsPanel: React.FC<GamePortalOpsPanelProps> = ({ onApplyToPrompt
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
             }`}
           >
-            B2B Pricing Tier & Margin
+            {tr('Gói B2B & Biên lợi nhuận', 'B2B Pricing Tier & Margin')}
           </button>
           <button
             onClick={() => setSubTab('gate')}
@@ -207,7 +214,7 @@ const GamePortalOpsPanel: React.FC<GamePortalOpsPanelProps> = ({ onApplyToPrompt
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
             }`}
           >
-            Voodoo Input Gate
+            {tr('Cổng kiểm định Voodoo Gate', 'Voodoo Input Gate')}
           </button>
         </div>
 
@@ -216,7 +223,7 @@ const GamePortalOpsPanel: React.FC<GamePortalOpsPanelProps> = ({ onApplyToPrompt
             onClick={handlePushConfigToPrompt}
             className="px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800 rounded-md whitespace-nowrap shrink-0 transition-colors"
           >
-            Apply Specs to Prompt
+            {tr('Đẩy thông số vào Prompt', 'Apply Specs to Prompt')}
           </button>
         )}
       </div>
@@ -230,7 +237,7 @@ const GamePortalOpsPanel: React.FC<GamePortalOpsPanelProps> = ({ onApplyToPrompt
               <div key={c.name} className="px-3 py-2 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col">
                 <span className="text-gray-500 dark:text-gray-400 font-medium">{c.name}</span>
                 <span className="font-mono tabular-nums font-semibold text-gray-900 dark:text-gray-100 mt-0.5">
-                  ${c.revenue.toFixed(2)} · {c.orders} orders
+                  ${c.revenue.toFixed(2)} · {tr(`${c.orders} đơn`, `${c.orders} orders`)}
                 </span>
               </div>
             ))}
@@ -249,7 +256,13 @@ const GamePortalOpsPanel: React.FC<GamePortalOpsPanelProps> = ({ onApplyToPrompt
                       : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
                   }`}
                 >
-                  {f === 'ALL' ? 'All (12)' : f === 'DELAYED' ? `Delayed (${delayedCount})` : f}
+                  {f === 'ALL'
+                    ? tr('Tất cả (12)', 'All (12)')
+                    : f === 'DELAYED'
+                      ? tr(`Bị kẹt (${delayedCount})`, `Delayed (${delayedCount})`)
+                      : f === 'Credit Card'
+                        ? tr('Thẻ tín dụng', 'Credit Card')
+                        : f}
                 </button>
               ))}
             </div>
@@ -258,7 +271,7 @@ const GamePortalOpsPanel: React.FC<GamePortalOpsPanelProps> = ({ onApplyToPrompt
                 onClick={reconcileAllDelayed}
                 className="px-3 py-1 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded whitespace-nowrap shrink-0 transition-colors"
               >
-                Auto-Reconcile Delayed ({delayedCount})
+                {tr(`Tự động đối soát đơn kẹt (${delayedCount})`, `Auto-Reconcile Delayed (${delayedCount})`)}
               </button>
             )}
           </div>
@@ -268,12 +281,12 @@ const GamePortalOpsPanel: React.FC<GamePortalOpsPanelProps> = ({ onApplyToPrompt
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-gray-50 dark:bg-gray-900/60 border-b border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400">
-                  <th className="py-2 px-3 font-medium">Order ID</th>
-                  <th className="py-2 px-3 font-medium">Market / Game</th>
-                  <th className="py-2 px-3 font-medium">Payment Rail</th>
-                  <th className="py-2 px-3 font-medium text-right">Amount</th>
-                  <th className="py-2 px-3 font-medium">Receipt State</th>
-                  <th className="py-2 px-3 font-medium text-right">Action</th>
+                  <th className="py-2 px-3 font-medium">{tr('Mã đơn', 'Order ID')}</th>
+                  <th className="py-2 px-3 font-medium">{tr('Thị trường / Game', 'Market / Game')}</th>
+                  <th className="py-2 px-3 font-medium">{tr('Kênh thanh toán', 'Payment Rail')}</th>
+                  <th className="py-2 px-3 font-medium text-right">{tr('Số tiền', 'Amount')}</th>
+                  <th className="py-2 px-3 font-medium">{tr('Trạng thái biên bản', 'Receipt State')}</th>
+                  <th className="py-2 px-3 font-medium text-right">{tr('Thao tác', 'Action')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700/70">
@@ -287,7 +300,7 @@ const GamePortalOpsPanel: React.FC<GamePortalOpsPanelProps> = ({ onApplyToPrompt
                       <div className="text-[11px] text-gray-500 dark:text-gray-400">{order.city} · {order.rating}★</div>
                     </td>
                     <td className="py-2 px-3 text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                      {order.rail}
+                      {order.rail === 'Credit Card' ? tr('Thẻ tín dụng', 'Credit Card') : order.rail}
                     </td>
                     <td className="py-2 px-3 font-mono tabular-nums text-right font-semibold text-gray-900 dark:text-gray-100 whitespace-nowrap">
                       ${order.amount.toFixed(2)}
@@ -295,11 +308,11 @@ const GamePortalOpsPanel: React.FC<GamePortalOpsPanelProps> = ({ onApplyToPrompt
                     <td className="py-2 px-3 whitespace-nowrap">
                       {order.status === 'Settled' ? (
                         <span className="text-emerald-700 dark:text-emerald-400 font-medium">
-                          Settled · <span className="font-mono text-[11px] text-gray-500 dark:text-gray-400">{order.receiptHash}</span>
+                          {tr('Đã khớp', 'Settled')} · <span className="font-mono text-[11px] text-gray-500 dark:text-gray-400">{order.receiptHash}</span>
                         </span>
                       ) : (
                         <span className="text-amber-700 dark:text-amber-400 font-semibold">
-                          Delayed Delivery · Desync
+                          {tr('Chậm trả vật phẩm · Lệch đồng bộ', 'Delayed Delivery · Desync')}
                         </span>
                       )}
                     </td>
@@ -309,10 +322,10 @@ const GamePortalOpsPanel: React.FC<GamePortalOpsPanelProps> = ({ onApplyToPrompt
                           onClick={() => reconcileReceipt(order.id)}
                           className="px-2.5 py-1 text-[11px] font-medium bg-amber-600 hover:bg-amber-700 text-white rounded transition-colors"
                         >
-                          Verify Receipt
+                          {tr('Xác thực biên bản', 'Verify Receipt')}
                         </button>
                       ) : (
-                        <span className="text-[11px] text-gray-400 dark:text-gray-500">Matched 100%</span>
+                        <span className="text-[11px] text-gray-400 dark:text-gray-500">{tr('Khớp 100%', 'Matched 100%')}</span>
                       )}
                     </td>
                   </tr>
@@ -329,31 +342,40 @@ const GamePortalOpsPanel: React.FC<GamePortalOpsPanelProps> = ({ onApplyToPrompt
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {[
               {
-                name: 'Indie Gate Check',
-                audience: 'For early HTML5 / Poki builds',
-                price: '$299 / batch',
-                details: '25 verified playtest sessions · Video + Drop-off telemetry · Voodoo Gate scorecard',
-                rail: 'USDC / USDT Escrow',
+                name: tr('Gói Indie Kiểm Định Gate', 'Indie Gate Check'),
+                audience: tr('Cho bản build HTML5 / Poki sớm', 'For early HTML5 / Poki builds'),
+                price: tr('$299 / lô', '$299 / batch'),
+                details: tr(
+                  '25 phiên playtest xác thực · Video + Telemetry drop-off · Bảng điểm Voodoo Gate',
+                  '25 verified playtest sessions · Video + Drop-off telemetry · Voodoo Gate scorecard'
+                ),
+                rail: tr('Ký quỹ USDC / USDT', 'USDC / USDT Escrow'),
                 presetSessions: 25,
                 presetPrice: 11.96,
                 presetReward: 4.0,
               },
               {
-                name: 'Studio Growth Pack',
-                audience: 'For pre-UA validation',
-                price: '$600 / batch',
-                details: '50 sessions (SEA/US/JP/KR) · Level funnel + Crash trace · Receipt Gate SLA 100%',
-                rail: 'USDC / USDT (0% Fee)',
+                name: tr('Gói Studio Tăng Trưởng', 'Studio Growth Pack'),
+                audience: tr('Kiểm chứng trước khi chạy UA', 'For pre-UA validation'),
+                price: tr('$600 / lô', '$600 / batch'),
+                details: tr(
+                  '50 phiên (SEA/US/JP/KR) · Phễu màn chơi + Crash trace · Cam kết đối soát 100%',
+                  '50 sessions (SEA/US/JP/KR) · Level funnel + Crash trace · Receipt Gate SLA 100%'
+                ),
+                rail: tr('USDC / USDT (Phí 0%)', 'USDC / USDT (0% Fee)'),
                 presetSessions: 50,
                 presetPrice: 12.0,
                 presetReward: 4.5,
               },
               {
-                name: 'Pro League & LiveOps',
-                audience: 'For Phase 2 distribution',
-                price: '$249+ Escrow',
-                details: 'Tournament prize escrow · Battle Pass ($15-$25) · Zero-desync Web Shop delivery',
-                rail: 'Solana USDC Escrow',
+                name: tr('Gói Pro League & LiveOps', 'Pro League & LiveOps'),
+                audience: tr('Cho phân phối Giai đoạn 2', 'For Phase 2 distribution'),
+                price: tr('$249+ Ký quỹ', '$249+ Escrow'),
+                details: tr(
+                  'Quỹ giải đấu Escrow · Battle Pass ($15-$25) · Trả vật phẩm Web Shop không trễ',
+                  'Tournament prize escrow · Battle Pass ($15-$25) · Zero-desync Web Shop delivery'
+                ),
+                rail: tr('Ký quỹ Solana USDC', 'Solana USDC Escrow'),
                 presetSessions: 100,
                 presetPrice: 14.0,
                 presetReward: 5.0,
@@ -376,7 +398,7 @@ const GamePortalOpsPanel: React.FC<GamePortalOpsPanelProps> = ({ onApplyToPrompt
                     }}
                     className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap"
                   >
-                    Simulate
+                    {tr('Mô phỏng', 'Simulate')}
                   </button>
                 </div>
               </div>
@@ -386,7 +408,7 @@ const GamePortalOpsPanel: React.FC<GamePortalOpsPanelProps> = ({ onApplyToPrompt
           {/* Interactive Unit Economics Simulator */}
           <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-900/40 flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Phase 1 Playtest Unit Economics Simulator</h4>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{tr('Mô phỏng kinh tế đơn vị Playtest Giai đoạn 1', 'Phase 1 Playtest Unit Economics Simulator')}</h4>
               <div className="flex items-center gap-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-0.5 rounded-md">
                 <button
                   onClick={() => setPayoutRail('usdc-solana')}
@@ -394,7 +416,7 @@ const GamePortalOpsPanel: React.FC<GamePortalOpsPanelProps> = ({ onApplyToPrompt
                     payoutRail === 'usdc-solana' ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300'
                   }`}
                 >
-                  USDC / USDT (0% Gateway)
+                  {tr('USDC / USDT (0% Phí cổng)', 'USDC / USDT (0% Gateway)')}
                 </button>
                 <button
                   onClick={() => setPayoutRail('fiat-card')}
@@ -402,41 +424,41 @@ const GamePortalOpsPanel: React.FC<GamePortalOpsPanelProps> = ({ onApplyToPrompt
                     payoutRail === 'fiat-card' ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300'
                   }`}
                 >
-                  Credit Card (2.9% + $0.30)
+                  {tr('Thẻ tín dụng (2.9% + $0.30)', 'Credit Card (2.9% + $0.30)')}
                 </button>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
               <label className="flex flex-col gap-1">
-                <span className="text-gray-600 dark:text-gray-300 font-medium">Playtest Sessions: <span className="font-mono tabular-nums">{sessionsCount}</span></span>
+                <span className="text-gray-600 dark:text-gray-300 font-medium">{tr('Số phiên Playtest:', 'Playtest Sessions:')} <span className="font-mono tabular-nums">{sessionsCount}</span></span>
                 <input type="range" min={10} max={250} step={5} value={sessionsCount} onChange={(e) => setSessionsCount(Number(e.target.value))} className="accent-blue-600" />
               </label>
               <label className="flex flex-col gap-1">
-                <span className="text-gray-600 dark:text-gray-300 font-medium">Studio Price / Session: <span className="font-mono tabular-nums">${studioPricePerSession.toFixed(2)}</span></span>
+                <span className="text-gray-600 dark:text-gray-300 font-medium">{tr('Giá thu Studio / Phiên:', 'Studio Price / Session:')} <span className="font-mono tabular-nums">${studioPricePerSession.toFixed(2)}</span></span>
                 <input type="range" min={6} max={25} step={0.5} value={studioPricePerSession} onChange={(e) => setStudioPricePerSession(Number(e.target.value))} className="accent-blue-600" />
               </label>
               <label className="flex flex-col gap-1">
-                <span className="text-gray-600 dark:text-gray-300 font-medium">Tester Reward / Session: <span className="font-mono tabular-nums">${testerRewardUsdc.toFixed(2)}</span></span>
+                <span className="text-gray-600 dark:text-gray-300 font-medium">{tr('Thưởng Tester / Phiên:', 'Tester Reward / Session:')} <span className="font-mono tabular-nums">${testerRewardUsdc.toFixed(2)}</span></span>
                 <input type="range" min={2} max={12} step={0.5} value={testerRewardUsdc} onChange={(e) => setTesterRewardUsdc(Number(e.target.value))} className="accent-blue-600" />
               </label>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-gray-200 dark:border-gray-700 text-xs">
               <div>
-                <div className="text-gray-500 dark:text-gray-400">Gross B2B Billing</div>
+                <div className="text-gray-500 dark:text-gray-400">{tr('Tổng thu B2B', 'Gross B2B Billing')}</div>
                 <div className="text-sm font-bold font-mono tabular-nums text-gray-900 dark:text-gray-100">${pricingMath.grossRevenue.toFixed(2)}</div>
               </div>
               <div>
-                <div className="text-gray-500 dark:text-gray-400">Tester Escrow Payout</div>
+                <div className="text-gray-500 dark:text-gray-400">{tr('Trả thưởng Tester', 'Tester Escrow Payout')}</div>
                 <div className="text-sm font-bold font-mono tabular-nums text-gray-900 dark:text-gray-100">${pricingMath.testerPayout.toFixed(2)}</div>
               </div>
               <div>
-                <div className="text-gray-500 dark:text-gray-400">Payment Rail Fee</div>
+                <div className="text-gray-500 dark:text-gray-400">{tr('Phí cổng thanh toán', 'Payment Rail Fee')}</div>
                 <div className="text-sm font-bold font-mono tabular-nums text-amber-600 dark:text-amber-400">${pricingMath.gatewayFee.toFixed(2)}</div>
               </div>
               <div>
-                <div className="text-gray-500 dark:text-gray-400">Game9K Net Margin</div>
+                <div className="text-gray-500 dark:text-gray-400">{tr('Biên lợi nhuận Game9K', 'Game9K Net Margin')}</div>
                 <div className="text-sm font-bold font-mono tabular-nums text-emerald-700 dark:text-emerald-400">
                   ${pricingMath.netMargin.toFixed(2)} ({pricingMath.marginPct.toFixed(1)}%)
                 </div>
@@ -451,18 +473,18 @@ const GamePortalOpsPanel: React.FC<GamePortalOpsPanelProps> = ({ onApplyToPrompt
         <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 dark:border-gray-700 pb-3">
             <div>
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Voodoo-Inspired Build Gate (Phase 1 → Phase 2 Promotion)</h4>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Filter HTML5/WebGL builds before allocating Phase 2 distribution & Web Shop LiveOps.</p>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{tr('Cổng kiểm định chuẩn Voodoo (Thăng hạng Giai đoạn 1 → 2)', 'Voodoo-Inspired Build Gate (Phase 1 → Phase 2 Promotion)')}</h4>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{tr('Sàng lọc bản build HTML5/WebGL trước khi cấp quyền phân phối Giai đoạn 2 & Web Shop LiveOps.', 'Filter HTML5/WebGL builds before allocating Phase 2 distribution & Web Shop LiveOps.')}</p>
             </div>
             <div className={`px-3 py-1.5 rounded text-xs font-semibold ${gatePassed ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : 'bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800'}`}>
-              {gatePassed ? 'GATE PASSED · Eligible for Phase 2' : 'GATE HOLD · Needs UX / Stability Fix'}
+              {gatePassed ? tr('ĐẠT GATE · Đủ điều kiện Giai đoạn 2', 'GATE PASSED · Eligible for Phase 2') : tr('CHƯA ĐẠT GATE · Cần tối ưu UX / Ổn định', 'GATE HOLD · Needs UX / Stability Fix')}
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
             <div className="flex flex-col gap-1.5">
               <div className="flex justify-between">
-                <span className="font-medium text-gray-700 dark:text-gray-300">Crash Rate (Target ≤ 1.5%)</span>
+                <span className="font-medium text-gray-700 dark:text-gray-300">{tr('Tỷ lệ Crash (Mục tiêu ≤ 1.5%)', 'Crash Rate (Target ≤ 1.5%)')}</span>
                 <span className={`font-mono tabular-nums font-bold ${crashRate <= 1.5 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{crashRate.toFixed(1)}%</span>
               </div>
               <input type="range" min={0} max={5} step={0.1} value={crashRate} onChange={(e) => setCrashRate(Number(e.target.value))} className="accent-blue-600" />
@@ -470,7 +492,7 @@ const GamePortalOpsPanel: React.FC<GamePortalOpsPanelProps> = ({ onApplyToPrompt
 
             <div className="flex flex-col gap-1.5">
               <div className="flex justify-between">
-                <span className="font-medium text-gray-700 dark:text-gray-300">L1–L3 Completion (Target ≥ 68%)</span>
+                <span className="font-medium text-gray-700 dark:text-gray-300">{tr('Hoàn thành màn L1–L3 (Mục tiêu ≥ 68%)', 'L1–L3 Completion (Target ≥ 68%)')}</span>
                 <span className={`font-mono tabular-nums font-bold ${completionRate >= 68 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{completionRate}%</span>
               </div>
               <input type="range" min={20} max={95} step={1} value={completionRate} onChange={(e) => setCompletionRate(Number(e.target.value))} className="accent-blue-600" />
@@ -478,7 +500,7 @@ const GamePortalOpsPanel: React.FC<GamePortalOpsPanelProps> = ({ onApplyToPrompt
 
             <div className="flex flex-col gap-1.5">
               <div className="flex justify-between">
-                <span className="font-medium text-gray-700 dark:text-gray-300">D1 Retention (Target ≥ 32%)</span>
+                <span className="font-medium text-gray-700 dark:text-gray-300">{tr('Giữ chân ngày 1 - D1 Retention (Mục tiêu ≥ 32%)', 'D1 Retention (Target ≥ 32%)')}</span>
                 <span className={`font-mono tabular-nums font-bold ${d1Retention >= 32 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{d1Retention}%</span>
               </div>
               <input type="range" min={10} max={65} step={1} value={d1Retention} onChange={(e) => setD1Retention(Number(e.target.value))} className="accent-blue-600" />
@@ -486,8 +508,8 @@ const GamePortalOpsPanel: React.FC<GamePortalOpsPanelProps> = ({ onApplyToPrompt
 
             <div className="flex flex-col gap-1.5">
               <div className="flex justify-between">
-                <span className="font-medium text-gray-700 dark:text-gray-300">Avg Session Length (Target ≥ 4.5 min)</span>
-                <span className={`font-mono tabular-nums font-bold ${avgSessionMin >= 4.5 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{avgSessionMin.toFixed(1)}m</span>
+                <span className="font-medium text-gray-700 dark:text-gray-300">{tr('Thời lượng phiên TB (Mục tiêu ≥ 4.5 phút)', 'Avg Session Length (Target ≥ 4.5 min)')}</span>
+                <span className={`font-mono tabular-nums font-bold ${avgSessionMin >= 4.5 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{avgSessionMin.toFixed(1)}{tr('p', 'm')}</span>
               </div>
               <input type="range" min={1} max={15} step={0.1} value={avgSessionMin} onChange={(e) => setAvgSessionMin(Number(e.target.value))} className="accent-blue-600" />
             </div>

@@ -4,8 +4,9 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { AppMode, SavedSessionRecord } from '../types';
+import { AppMode, Language, SavedSessionRecord } from '../types';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface SessionHistoryModalProps {
   isOpen: boolean;
@@ -20,26 +21,44 @@ interface SessionHistoryModalProps {
   onTriggerUploadJson: () => void;
 }
 
-const MODE_LABELS: Record<AppMode, string> = {
-  image: 'Image',
-  story: 'Story',
-  video: 'Video',
-  'game-portal': 'Game Portal',
-  'crypto-solana': 'Crypto · Solana',
+const MODE_LABELS: Record<Language, Record<AppMode, string>> = {
+  vi: {
+    image: 'Ảnh',
+    story: 'Truyện',
+    video: 'Video',
+    'game-portal': 'Cổng Game',
+    'crypto-solana': 'Crypto · Solana',
+  },
+  en: {
+    image: 'Image',
+    story: 'Story',
+    video: 'Video',
+    'game-portal': 'Game Portal',
+    'crypto-solana': 'Crypto · Solana',
+  },
 };
 
-const ACTION_LABELS: Record<SavedSessionRecord['actionType'], string> = {
-  analyze: 'Phân tích',
-  refine: 'Tinh chỉnh Prompt',
-  generate: 'Tạo kết quả',
-  snapshot: 'Snapshot',
-  imported: 'Đã nhập JSON',
+const ACTION_LABELS: Record<Language, Record<SavedSessionRecord['actionType'], string>> = {
+  vi: {
+    analyze: 'Phân tích',
+    refine: 'Tinh chỉnh Prompt',
+    generate: 'Tạo kết quả',
+    snapshot: 'Bản lưu nhanh',
+    imported: 'Đã nhập JSON',
+  },
+  en: {
+    analyze: 'Analyze',
+    refine: 'Refine Prompt',
+    generate: 'Generate',
+    snapshot: 'Snapshot',
+    imported: 'Imported JSON',
+  },
 };
 
-function formatTime(iso: string): string {
+function formatTime(iso: string, language: Language): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString('vi-VN', {
+  return date.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US', {
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
@@ -48,15 +67,19 @@ function formatTime(iso: string): string {
   });
 }
 
-function summarizeResults(session: SavedSessionRecord): string {
+function summarizeResults(session: SavedSessionRecord, language: Language): string {
+  const tr = (vi: string, en: string) => (language === 'vi' ? vi : en);
   const parts: string[] = [];
   const validImgCount = session.results.images.filter((i) => Boolean(i.url)).length;
-  if (validImgCount > 0) parts.push(`${validImgCount} ảnh`);
-  if (session.results.story) parts.push(`Truyện (${session.results.story.length} ký tự)`);
+  if (validImgCount > 0) parts.push(tr(`${validImgCount} ảnh`, `${validImgCount} image(s)`));
+  if (session.results.story)
+    parts.push(tr(`Truyện (${session.results.story.length} ký tự)`, `Story (${session.results.story.length} chars)`));
   if (session.results.video) parts.push('Video');
   if (session.results.blueprint) parts.push(`Blueprint: ${session.results.blueprint.title}`);
-  if (session.results.error) parts.push(`Lỗi: ${session.results.error}`);
-  return parts.length > 0 ? parts.join(' · ') : 'Chưa tạo kết quả (chỉ phân tích/chat)';
+  if (session.results.error) parts.push(tr(`Lỗi: ${session.results.error}`, `Error: ${session.results.error}`));
+  return parts.length > 0
+    ? parts.join(' · ')
+    : tr('Chưa tạo kết quả (chỉ phân tích/chat)', 'No outputs yet (analysis/chat only)');
 }
 
 const SessionHistoryModal: React.FC<SessionHistoryModalProps> = ({
@@ -72,6 +95,7 @@ const SessionHistoryModal: React.FC<SessionHistoryModalProps> = ({
   onTriggerUploadJson,
 }) => {
   const modalRef = useFocusTrap(isOpen);
+  const { language, tr } = useLanguage();
   const [filterMode, setFilterMode] = useState<'all' | AppMode>('all');
   const [query, setQuery] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -115,10 +139,16 @@ const SessionHistoryModal: React.FC<SessionHistoryModalProps> = ({
               id="idb-history-title"
               className="font-display text-lg font-bold text-gray-900 dark:text-gray-100"
             >
-              IndexedDB Archive · Chat, Xử lý &amp; Kết quả
+              {tr(
+                'Kho lưu trữ IndexedDB · Chat, Xử lý & Kết quả',
+                'IndexedDB Archive · Chats, Processing & Outputs'
+              )}
             </h2>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 tabular-nums">
-              {sessions.length} phiên đã lưu tự động trong trình duyệt
+              {tr(
+                `${sessions.length} phiên đã lưu tự động trong trình duyệt`,
+                `${sessions.length} session(s) auto-saved in browser storage`
+              )}
             </p>
           </div>
 
@@ -127,23 +157,23 @@ const SessionHistoryModal: React.FC<SessionHistoryModalProps> = ({
               onClick={onSaveSnapshot}
               className="px-3 py-1.5 text-xs font-medium rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors whitespace-nowrap shrink-0"
             >
-              Lưu phiên hiện tại
+              {tr('Lưu phiên hiện tại', 'Save Current Snapshot')}
             </button>
             <button
               onClick={onDownloadAllJson}
               className="px-3 py-1.5 text-xs font-medium rounded-md border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors whitespace-nowrap shrink-0"
             >
-              Tải xuống JSON
+              {tr('Tải xuống JSON', 'Export JSON')}
             </button>
             <button
               onClick={onTriggerUploadJson}
               className="px-3 py-1.5 text-xs font-medium rounded-md bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:opacity-90 transition-opacity whitespace-nowrap shrink-0"
             >
-              Upload JSON
+              {tr('Tải lên JSON', 'Import JSON')}
             </button>
             <button
               onClick={onClose}
-              aria-label="Đóng lịch sử IndexedDB"
+              aria-label={tr('Đóng lịch sử IndexedDB', 'Close IndexedDB archive')}
               className="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -166,7 +196,7 @@ const SessionHistoryModal: React.FC<SessionHistoryModalProps> = ({
                     : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
-                {m === 'all' ? 'Tất cả' : MODE_LABELS[m]}
+                {m === 'all' ? tr('Tất cả', 'All') : MODE_LABELS[language][m]}
               </button>
             ))}
           </div>
@@ -176,7 +206,7 @@ const SessionHistoryModal: React.FC<SessionHistoryModalProps> = ({
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Tìm prompt, entity, kết quả..."
+              placeholder={tr('Tìm prompt, thực thể, kết quả...', 'Search prompt, entity, output...')}
               className="w-full sm:w-56 text-xs px-2.5 py-1.5 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             {sessions.length > 0 && (
@@ -189,13 +219,13 @@ const SessionHistoryModal: React.FC<SessionHistoryModalProps> = ({
                     }}
                     className="px-2.5 py-1 text-xs font-medium rounded-md bg-red-600 text-white hover:bg-red-700 whitespace-nowrap"
                   >
-                    Xác nhận xóa
+                    {tr('Xác nhận xóa', 'Confirm Clear')}
                   </button>
                   <button
                     onClick={() => setConfirmClear(false)}
                     className="px-2 py-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400"
                   >
-                    Hủy
+                    {tr('Hủy', 'Cancel')}
                   </button>
                 </div>
               ) : (
@@ -203,7 +233,7 @@ const SessionHistoryModal: React.FC<SessionHistoryModalProps> = ({
                   onClick={() => setConfirmClear(true)}
                   className="px-2.5 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md whitespace-nowrap"
                 >
-                  Xóa hết
+                  {tr('Xóa hết', 'Clear All')}
                 </button>
               )
             )}
@@ -214,14 +244,19 @@ const SessionHistoryModal: React.FC<SessionHistoryModalProps> = ({
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 bg-white dark:bg-gray-800">
           {filteredSessions.length === 0 ? (
             <div className="text-center py-12 text-gray-500 dark:text-gray-400 text-sm">
-              Chưa có phiên nào khớp bộ lọc trong IndexedDB. Hãy phân tích, tinh chỉnh hoặc tạo kết quả để tự động lưu.
+              {tr(
+                'Chưa có phiên nào khớp bộ lọc trong IndexedDB. Hãy phân tích, tinh chỉnh hoặc tạo kết quả để tự động lưu.',
+                'No matching sessions in IndexedDB yet. Analyze, refine, or generate outputs to auto-save.'
+              )}
             </div>
           ) : (
             filteredSessions.map((session) => {
               const isExpanded = expandedId === session.id;
               const entityCount = session.beliefGraph?.entities?.length ?? 0;
               const relCount = session.beliefGraph?.relationships?.length ?? 0;
-              const qaCount = (session.qaPairs?.length || 0) + Object.keys(session.pendingClarificationAnswers || {}).length;
+              const qaCount =
+                (session.qaPairs?.length || 0) +
+                Object.keys(session.pendingClarificationAnswers || {}).length;
 
               return (
                 <div
@@ -231,17 +266,20 @@ const SessionHistoryModal: React.FC<SessionHistoryModalProps> = ({
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <div className="text-xs font-medium text-gray-500 dark:text-gray-400 tabular-nums">
-                        {formatTime(session.updatedAt)} · {MODE_LABELS[session.mode]} · {ACTION_LABELS[session.actionType]}
+                        {formatTime(session.updatedAt, language)} · {MODE_LABELS[language][session.mode]} · {ACTION_LABELS[language][session.actionType]}
                         {session.domainTrack ? ` · ${session.domainTrack}` : ''}
                       </div>
                       <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mt-1 line-clamp-2">
-                        {session.prompt || '(Trống)'}
+                        {session.prompt || tr('(Trống)', '(Empty)')}
                       </p>
                       <div className="text-xs text-gray-600 dark:text-gray-300 mt-1.5 tabular-nums">
-                        Xử lý: {entityCount} entities · {relCount} relations · {session.clarifications.length} câu hỏi gợi ý · {qaCount} Q&amp;A
+                        {tr(
+                          `Xử lý: ${entityCount} thực thể · ${relCount} quan hệ · ${session.clarifications.length} câu hỏi gợi ý · ${qaCount} Q&A`,
+                          `Processing: ${entityCount} entities · ${relCount} relations · ${session.clarifications.length} questions · ${qaCount} Q&A`
+                        )}
                       </div>
                       <div className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                        Kết quả: {summarizeResults(session)}
+                        {tr('Kết quả:', 'Results:')} {summarizeResults(session, language)}
                       </div>
                     </div>
 
@@ -250,7 +288,7 @@ const SessionHistoryModal: React.FC<SessionHistoryModalProps> = ({
                         onClick={() => setExpandedId(isExpanded ? null : session.id)}
                         className="px-2.5 py-1 text-xs font-medium rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 whitespace-nowrap"
                       >
-                        {isExpanded ? 'Thu gọn' : 'Chi tiết'}
+                        {isExpanded ? tr('Thu gọn', 'Collapse') : tr('Chi tiết', 'Details')}
                       </button>
                       <button
                         onClick={() => onDownloadSingleJson(session)}
@@ -265,14 +303,14 @@ const SessionHistoryModal: React.FC<SessionHistoryModalProps> = ({
                         }}
                         className="px-2.5 py-1 text-xs font-medium rounded bg-blue-600 text-white hover:bg-blue-700 whitespace-nowrap"
                       >
-                        Khôi phục
+                        {tr('Khôi phục', 'Restore')}
                       </button>
                       <button
                         onClick={() => onDeleteSession(session.id)}
-                        aria-label="Xóa phiên"
+                        aria-label={tr('Xóa phiên', 'Delete session')}
                         className="px-2 py-1 text-xs font-medium rounded text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 whitespace-nowrap"
                       >
-                        Xóa
+                        {tr('Xóa', 'Delete')}
                       </button>
                     </div>
                   </div>
@@ -281,13 +319,17 @@ const SessionHistoryModal: React.FC<SessionHistoryModalProps> = ({
                     <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-2 text-xs text-gray-700 dark:text-gray-300">
                       {session.refinedFromPrompt && (
                         <div>
-                          <span className="font-semibold text-gray-900 dark:text-gray-100">Prompt gốc trước tinh chỉnh:</span>{' '}
+                          <span className="font-semibold text-gray-900 dark:text-gray-100">
+                            {tr('Prompt gốc trước tinh chỉnh:', 'Original prompt before refinement:')}
+                          </span>{' '}
                           {session.refinedFromPrompt}
                         </div>
                       )}
                       {session.qaPairs && session.qaPairs.length > 0 && (
                         <div>
-                          <span className="font-semibold text-gray-900 dark:text-gray-100">Lịch sử trả lời câu hỏi:</span>
+                          <span className="font-semibold text-gray-900 dark:text-gray-100">
+                            {tr('Lịch sử trả lời câu hỏi:', 'Q&A History:')}
+                          </span>
                           <ul className="list-disc pl-4 mt-1 space-y-0.5">
                             {session.qaPairs.map((qa, i) => (
                               <li key={i}>
@@ -299,7 +341,9 @@ const SessionHistoryModal: React.FC<SessionHistoryModalProps> = ({
                       )}
                       {session.beliefGraph && session.beliefGraph.entities.length > 0 && (
                         <div>
-                          <span className="font-semibold text-gray-900 dark:text-gray-100">Entities đã xử lý:</span>{' '}
+                          <span className="font-semibold text-gray-900 dark:text-gray-100">
+                            {tr('Thực thể đã xử lý:', 'Processed Entities:')}
+                          </span>{' '}
                           {session.beliefGraph.entities.map((e) => e.name).join(', ')}
                         </div>
                       )}

@@ -8,6 +8,7 @@ import React, { useState, useMemo, useEffect, useRef, useCallback, useLayoutEffe
 import { motion, AnimatePresence } from 'motion/react';
 import { Tooltip } from './Tooltip';
 import { AppMode, BeliefState, Entity, Attribute, Relationship, Candidate } from '../types';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface BeliefGraphProps {
   data: BeliefState | null;
@@ -52,45 +53,36 @@ const getHighestProbabilityValue = (attribute: Attribute): string => {
 
 // --- Thinking Process Component ---
 const ThinkingProcess = ({ prompt }: { prompt: string }) => {
+    const { tr } = useLanguage();
     const [step, setStep] = useState(0);
 
     const steps = useMemo(() => {
         const cleanPrompt = prompt.toLowerCase().replace(/[^\w\s]/g, '');
         const words = cleanPrompt.split(/\s+/).filter(w => w.length > 0);
-        
-        // Context detection
         const hasHuman = words.some(w => ['man', 'woman', 'boy', 'girl', 'person', 'people', 'child', 'kid', 'guy', 'lady', 'friends', 'family', 'couple'].includes(w));
-        const hasAction = words.some(w => w.endsWith('ing')); 
-        
-        // Find a significant noun-like word (longer than 3 chars, not common stop words)
+        const hasAction = words.some(w => w.endsWith('ing'));
         const stopWords = ['about', 'after', 'before', 'their', 'where', 'which', 'there', 'could', 'would', 'with', 'from', 'that', 'this', 'some', 'what'];
         const significantWord = words.find(w => w.length > 3 && !stopWords.includes(w)) || 'entities';
         const truncatedKeyword = significantWord.length > 10 ? significantWord.substring(0, 9) + '...' : significantWord;
 
         const generatedSteps = [
-            "Parsing prompt syntax...",
-            `Identifying key concepts like '${truncatedKeyword}'...`,
+            tr("Đang phân tích cú pháp prompt...", "Parsing prompt syntax..."),
+            tr(`Đang nhận diện khái niệm '${truncatedKeyword}'...`, `Identifying key concepts like '${truncatedKeyword}'...`),
+            hasHuman
+                ? tr("Đang phân tích tư thế và biểu cảm...", "Analyzing poses and expressions...")
+                : tr("Đang phân tích thuộc tính thực thể...", "Analyzing object attributes..."),
+            tr("Đang suy luận ngữ cảnh ngầm định...", "Deducing implicit surroundings..."),
         ];
-
-        if (hasHuman) {
-            generatedSteps.push("Analyzing poses and expressions...");
-        } else {
-            generatedSteps.push("Analyzing object attributes...");
-        }
-
-        generatedSteps.push("Deducing implicit surroundings...");
-        
         if (hasAction) {
-            generatedSteps.push("Mapping interaction dynamics...");
+            generatedSteps.push(tr("Đang lập bản đồ tương tác...", "Mapping interaction dynamics..."));
         }
-
         return generatedSteps;
-    }, [prompt]);
+    }, [prompt, tr]);
 
     useEffect(() => {
         const interval = setInterval(() => {
             setStep((s) => (s + 1) % steps.length);
-        }, 2200); // 2.2 seconds per step
+        }, 2200);
         return () => clearInterval(interval);
     }, [steps]);
 
@@ -112,24 +104,27 @@ const EmptyStatePlaceholder = ({ text }: { text: React.ReactNode }) => (
 );
 
 // --- Legend Component ---
-const Legend = () => (
-    <div className="absolute top-4 right-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm p-3 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm text-sm space-y-2 z-40 pointer-events-none select-none">
-        <div className="flex items-center gap-2">
-            <div className="w-6 h-4 border-2 border-gray-600 dark:border-gray-400 rounded bg-white dark:bg-gray-700"></div>
-            <span className="text-gray-600 dark:text-gray-300 font-medium">Explicit (in prompt)</span>
-        </div>
-        <div className="flex items-center gap-2">
-            <div className="w-6 h-4 border-2 border-dashed border-gray-400 dark:border-gray-500 rounded bg-white dark:bg-gray-700"></div>
-            <span className="text-gray-500 dark:text-gray-400">Implicit (inferred)</span>
-        </div>
-        <div className="flex items-center gap-2">
-            <div className="w-6 h-4 border-2 border-gray-300 dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                <span className="text-xs text-gray-400 line-through decoration-gray-400">Abs</span>
+const Legend = () => {
+    const { tr } = useLanguage();
+    return (
+        <div className="absolute top-4 right-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm p-3 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm text-sm space-y-2 z-40 pointer-events-none select-none">
+            <div className="flex items-center gap-2">
+                <div className="w-6 h-4 border-2 border-gray-600 dark:border-gray-400 rounded bg-white dark:bg-gray-700"></div>
+                <span className="text-gray-600 dark:text-gray-300 font-medium">{tr('Tường minh (trong prompt)', 'Explicit (in prompt)')}</span>
             </div>
-            <span className="text-gray-500 dark:text-gray-400">Marked Absent</span>
+            <div className="flex items-center gap-2">
+                <div className="w-6 h-4 border-2 border-dashed border-gray-400 dark:border-gray-500 rounded bg-white dark:bg-gray-700"></div>
+                <span className="text-gray-500 dark:text-gray-400">{tr('Ngầm định (suy luận)', 'Implicit (inferred)')}</span>
+            </div>
+            <div className="flex items-center gap-2">
+                <div className="w-6 h-4 border-2 border-gray-300 dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                    <span className="text-xs text-gray-400 line-through decoration-gray-400">{tr('Ẩn', 'Abs')}</span>
+                </div>
+                <span className="text-gray-500 dark:text-gray-400">{tr('Đánh dấu vắng mặt', 'Marked Absent')}</span>
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 interface AttributeEditorProps {
     attribute: Attribute;
@@ -139,7 +134,51 @@ interface AttributeEditorProps {
     pendingValue?: string;
 }
 
+const ATTRIBUTE_LABELS_VI: Record<string, string> = {
+    style: 'Phong cách',
+    setting: 'Bối cảnh',
+    mood: 'Không khí',
+    lighting: 'Ánh sáng',
+    composition: 'Bố cục',
+    color_palette: 'Bảng màu',
+    camera_angle: 'Góc máy',
+    camera_movement: 'Chuyển động máy',
+    visual_style: 'Phong cách hình ảnh',
+    genre: 'Thể loại',
+    tone: 'Giọng điệu',
+    narrative_perspective: 'Góc nhìn kể chuyện',
+    pacing: 'Nhịp độ',
+    atmosphere: 'Bầu không khí',
+    color: 'Màu sắc',
+    expression: 'Biểu cảm',
+    pose: 'Tư thế',
+    clothing: 'Trang phục',
+    size: 'Kích thước',
+    action: 'Hành động',
+    monetization_phase: 'Giai đoạn kiếm tiền',
+    payment_rail: 'Kênh thanh toán',
+    receipt_gate_sla: 'Chuẩn đối soát biên bản',
+    input_gate_thresholds: 'Ngưỡng kiểm định Gate',
+    target_region: 'Thị trường mục tiêu',
+    hosting_sdk: 'Hạ tầng SDK Web',
+    bonding_curve_cap: 'Trần Bonding Curve',
+    settlement_rail: 'Kênh thanh toán',
+    fee_split_bps: 'Tỷ lệ chia phí',
+    escrow_program: 'Hợp đồng ký quỹ',
+    graduation_dex: 'Sàn DEX sau Graduate',
+    security_invariant: 'Bất biến bảo mật',
+};
+
+const formatAttributeDisplayName = (rawName: string, language: 'vi' | 'en'): string => {
+    const key = rawName.toLowerCase().replace(/\s+/g, '_');
+    if (language === 'vi' && ATTRIBUTE_LABELS_VI[key]) {
+        return ATTRIBUTE_LABELS_VI[key];
+    }
+    return rawName.replace(/_/g, ' ');
+};
+
 const AttributeEditor: React.FC<AttributeEditorProps> = ({ attribute, entity, onChange, isLoading, pendingValue }) => {
+    const { language, tr } = useLanguage();
     const [isCustomMode, setIsCustomMode] = useState(false);
     const [customValue, setCustomValue] = useState("");
     
@@ -187,9 +226,9 @@ const AttributeEditor: React.FC<AttributeEditorProps> = ({ attribute, entity, on
 
         return (
             <div key={attribute.name} className="grid grid-cols-[100px_1fr] sm:grid-cols-[120px_1fr] gap-4 items-center py-3 border-b border-gray-100 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors px-2 rounded-lg">
-                <label className="text-gray-600 dark:text-gray-400 font-medium text-sm sm:text-base">Existence</label>
+                <label className="text-gray-600 dark:text-gray-400 font-medium text-sm sm:text-base">{tr('Hiện diện', 'Existence')}</label>
                 <div className={`flex rounded-md border overflow-hidden w-full ${isModified ? 'border-blue-500 ring-1 ring-blue-200 dark:ring-blue-900' : 'border-gray-300 dark:border-gray-600'}`}>
-                     <Tooltip content={isLoading ? "Loading..." : (useGreen ? "Set existence to Present" : "Set inferred existence to Present")} className="w-1/2">
+                     <Tooltip content={isLoading ? tr('Đang tải...', 'Loading...') : (useGreen ? tr('Đặt trạng thái thành Có mặt', 'Set existence to Present') : tr('Đặt trạng thái suy luận thành Có mặt', 'Set inferred existence to Present'))} className="w-1/2">
                          <button
                             onClick={() => onChange(entity.name, attribute.name, 'true')}
                             disabled={isLoading}
@@ -199,10 +238,10 @@ const AttributeEditor: React.FC<AttributeEditorProps> = ({ attribute, entity, on
                                     : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                             }`}
                         >
-                            Present
+                            {tr('Có mặt', 'Present')}
                         </button>
                     </Tooltip>
-                    <Tooltip content={isLoading ? "Loading..." : "Set existence to Absent"} className="w-1/2">
+                    <Tooltip content={isLoading ? tr('Đang tải...', 'Loading...') : tr('Đặt trạng thái thành Vắng mặt', 'Set existence to Absent')} className="w-1/2">
                         <button
                             onClick={() => onChange(entity.name, attribute.name, 'false')}
                             disabled={isLoading}
@@ -212,7 +251,7 @@ const AttributeEditor: React.FC<AttributeEditorProps> = ({ attribute, entity, on
                                     : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                             }`}
                         >
-                            Absent
+                            {tr('Vắng mặt', 'Absent')}
                         </button>
                     </Tooltip>
                 </div>
@@ -224,8 +263,8 @@ const AttributeEditor: React.FC<AttributeEditorProps> = ({ attribute, entity, on
     return (
         <div key={attribute.name} className="grid grid-cols-[100px_1fr] sm:grid-cols-[120px_1fr] gap-4 items-center py-3 border-b border-gray-100 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors px-2 rounded-lg">
             <label className="text-gray-600 dark:text-gray-400 font-medium text-sm sm:text-base flex items-center gap-1.5 capitalize leading-tight">
-                {attribute.name.replace(/_/g, ' ')}
-                {isModified && <span className="h-2 w-2 rounded-full bg-blue-500 shadow-sm ring-1 ring-blue-200 dark:ring-blue-900 flex-shrink-0" title="Modified"></span>}
+                {formatAttributeDisplayName(attribute.name, language)}
+                {isModified && <span className="h-2 w-2 rounded-full bg-blue-500 shadow-sm ring-1 ring-blue-200 dark:ring-blue-900 flex-shrink-0" title={tr('Đã sửa', 'Modified')}></span>}
             </label>
             <div className="w-full min-w-0">
                 {isCustomMode ? (
@@ -235,7 +274,7 @@ const AttributeEditor: React.FC<AttributeEditorProps> = ({ attribute, entity, on
                             autoFocus
                             value={customValue}
                             onChange={(e) => setCustomValue(e.target.value)}
-                            placeholder="Type value..."
+                            placeholder={tr('Nhập giá trị...', 'Type value...')}
                             className="w-full min-w-0 bg-white dark:bg-gray-700 border border-blue-500 text-gray-800 dark:text-gray-200 text-sm rounded px-2 py-1.5 focus:outline-none shadow-sm"
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter' && customValue.trim()) {
@@ -255,13 +294,13 @@ const AttributeEditor: React.FC<AttributeEditorProps> = ({ attribute, entity, on
                                 }
                             }}
                             disabled={isLoading || !customValue.trim()}
-                            className="bg-blue-600 text-white hover:bg-blue-700 text-sm font-semibold px-2 py-0.5 rounded disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="bg-blue-600 text-white hover:bg-blue-700 text-sm font-semibold px-2 py-0.5 rounded disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 whitespace-nowrap"
                         >
-                            Save
+                            {tr('Lưu', 'Save')}
                         </button>
                         <button
                             onClick={() => setIsCustomMode(false)}
-                            title="Cancel"
+                            title={tr('Hủy', 'Cancel')}
                             className="text-gray-400 hover:text-gray-600 px-1 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
                             disabled={isLoading}
                         >
@@ -288,7 +327,7 @@ const AttributeEditor: React.FC<AttributeEditorProps> = ({ attribute, entity, on
                                 : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 border hover:border-gray-400 dark:hover:border-gray-500'
                             }`}
                         >
-                            <option value="Unknown">Unknown</option>
+                            <option value="Unknown">{tr('Chưa xác định', 'Unknown')}</option>
                             {Array.from(
                               new Map<string, Candidate>(
                                 attribute.value
@@ -302,7 +341,7 @@ const AttributeEditor: React.FC<AttributeEditorProps> = ({ attribute, entity, on
                                 <option value={currentValue}>{currentValue}</option>
                             )}
                             <option value="__custom__" className="font-bold text-blue-600 dark:text-blue-400 bg-gray-50 dark:bg-gray-800">
-                                + Type custom...
+                                {tr('+ Tự nhập...', '+ Type custom...')}
                             </option>
                         </select>
                         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500 dark:text-gray-400">
@@ -325,6 +364,7 @@ const RelationshipEditor: React.FC<{
   onClose: () => void;
   isLoading: boolean;
 }> = ({ rel, position, containerDimensions, onChange, onClose, isLoading }) => {
+  const { tr } = useLanguage();
   const editorRef = useRef<HTMLDivElement>(null);
   const [customLabel, setCustomLabel] = useState("");
   const [adjustedStyle, setAdjustedStyle] = useState<React.CSSProperties>({
@@ -411,7 +451,7 @@ const RelationshipEditor: React.FC<{
       onKeyDown={(e) => e.stopPropagation()}
     >
       <div className="flex justify-between items-center mb-2 flex-shrink-0">
-          <h4 className="font-bold text-base text-gray-800 dark:text-gray-100">Edit Relationship</h4>
+          <h4 className="font-bold text-base text-gray-800 dark:text-gray-100">{tr('Sửa quan hệ', 'Edit Relationship')}</h4>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xl leading-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded">&times;</button>
       </div>
       <div className="flex flex-col space-y-1 mb-3 flex-grow">
@@ -433,16 +473,16 @@ const RelationshipEditor: React.FC<{
                   value={customLabel}
                   onChange={(e) => setCustomLabel(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCustomSubmit()}
-                  placeholder="Type custom label..."
+                  placeholder={tr('Nhập nhãn quan hệ...', 'Type custom label...')}
                   className="flex-grow text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded p-1.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
                   disabled={isLoading}
               />
               <button 
                   onClick={handleCustomSubmit}
                   disabled={isLoading || !customLabel.trim()}
-                  className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-2 py-0.5 rounded disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-2 py-0.5 rounded disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 whitespace-nowrap"
               >
-                  Save
+                  {tr('Lưu', 'Save')}
               </button>
           </div>
       </div>
@@ -521,6 +561,7 @@ const BeliefGraph: React.FC<BeliefGraphProps> = ({
     pendingClarificationCount,
     currentPrompt
 }) => {
+  const { tr } = useLanguage();
   const [selectedEntity, setSelectedEntity] = useState<Entity | null>(null);
   const [hoveredEntity, setHoveredEntity] = useState<string | null>(null);
   const [hoveredRel, setHoveredRel] = useState<Relationship | null>(null);
@@ -1277,7 +1318,7 @@ const BeliefGraph: React.FC<BeliefGraphProps> = ({
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Updating Graph...</span>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{tr('Đang cập nhật biểu đồ...', 'Updating Graph...')}</span>
               </div>
           </div>
       )}
@@ -1312,9 +1353,9 @@ const BeliefGraph: React.FC<BeliefGraphProps> = ({
           ) : (
              !isLoading && <EmptyStatePlaceholder text={
                 <div className="flex flex-col gap-2">
-                    <span>Click <span className="font-bold text-blue-600 dark:text-blue-400">Refine prompt</span> to generate attributes.</span>
+                    <span>{tr('Nhấn ', 'Click ')}<span className="font-bold text-blue-600 dark:text-blue-400">{tr('Tinh chỉnh prompt', 'Refine prompt')}</span>{tr(' để tạo thuộc tính.', ' to generate attributes.')}</span>
                     <span className="text-base text-gray-400 dark:text-gray-500 font-normal max-w-sm mx-auto">
-                        Review and tweak overall attributes like atmosphere, genre, or camera movement tailored to your generation mode.
+                        {tr('Xem và tinh chỉnh các thuộc tính tổng thể như không khí, thể loại hoặc góc máy phù hợp với chế độ đã chọn.', 'Review and tweak overall attributes like atmosphere, genre, or camera movement tailored to your generation mode.')}
                     </span>
                 </div>
             } />
@@ -1341,17 +1382,17 @@ const BeliefGraph: React.FC<BeliefGraphProps> = ({
         >
             {data && (
                 <div className="absolute top-4 left-4 flex flex-col gap-2 z-40">
-                    <Tooltip content="Zoom In" position="right">
+                    <Tooltip content={tr('Phóng to', 'Zoom In')} position="right">
                         <button tabIndex={selectedEntity || selectedRel || isLoading ? -1 : 0} onClick={zoomIn} className="bg-white dark:bg-gray-700 p-2 rounded shadow text-gray-600 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" /></svg>
                         </button>
                     </Tooltip>
-                    <Tooltip content="Zoom Out" position="right">
+                    <Tooltip content={tr('Thu nhỏ', 'Zoom Out')} position="right">
                         <button tabIndex={selectedEntity || selectedRel || isLoading ? -1 : 0} onClick={zoomOut} className="bg-white dark:bg-gray-700 p-2 rounded shadow text-gray-600 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5 10a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" clipRule="evenodd" /></svg>
                         </button>
                     </Tooltip>
-                    <Tooltip content="Reset View" position="right">
+                    <Tooltip content={tr('Đặt lại góc nhìn', 'Reset View')} position="right">
                         <button tabIndex={selectedEntity || selectedRel || isLoading ? -1 : 0} onClick={resetView} className="bg-white dark:bg-gray-700 p-2 rounded shadow text-gray-600 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
                         </button>
@@ -1364,9 +1405,9 @@ const BeliefGraph: React.FC<BeliefGraphProps> = ({
             {!data && !isLoading && (
                <EmptyStatePlaceholder text={
                    <div className="flex flex-col gap-2">
-                       <span>Click <span className="font-bold text-blue-600 dark:text-blue-400">Refine prompt</span> to visualize the belief graph.</span>
+                       <span>{tr('Nhấn ', 'Click ')}<span className="font-bold text-blue-600 dark:text-blue-400">{tr('Tinh chỉnh prompt', 'Refine prompt')}</span>{tr(' để hiển thị biểu đồ niềm tin.', ' to visualize the belief graph.')}</span>
                        <span className="text-base text-gray-400 dark:text-gray-500 font-normal max-w-sm mx-auto">
-                           Explore implicit assumptions. Click on nodes to edit attributes, or edges to modify relationships.
+                           {tr('Khám phá các giả định ngầm định. Nhấn vào nút để sửa thuộc tính, hoặc đường nối để đổi quan hệ.', 'Explore implicit assumptions. Click on nodes to edit attributes, or edges to modify relationships.')}
                        </span>
                    </div>
                } />
@@ -1584,7 +1625,7 @@ const BeliefGraph: React.FC<BeliefGraphProps> = ({
             {data && objectEntities.length === 0 && !isLoading && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="text-center text-gray-500 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-6 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
-                        <p className="text-sm font-medium">No other entities found to visualize.</p>
+                        <p className="text-sm font-medium">{tr('Không có thực thể nào khác để hiển thị.', 'No other entities found to visualize.')}</p>
                     </div>
                   </div>
             )}

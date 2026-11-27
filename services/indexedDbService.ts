@@ -14,6 +14,7 @@ import {
   GamePortalTrack,
   GeneratedImage,
   ImagePart,
+  Language,
   Proactiveness,
   SavedSessionRecord,
   StoryType,
@@ -378,6 +379,7 @@ export function sanitizeWorkspaceSnapshot(raw: any): WorkspaceSnapshot {
   return {
     id: 'current',
     updatedAt: typeof raw?.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString(),
+    ...(raw?.language === 'vi' || raw?.language === 'en' ? { language: raw.language } : {}),
     mode,
     gamePortalTrack: VALID_GP_TRACKS.includes(raw?.gamePortalTrack)
       ? raw.gamePortalTrack
@@ -539,21 +541,28 @@ export function triggerJsonDownload(filename: string, payload: unknown): void {
 
 export function parseImportedJsonBundle(
   rawText: string,
-  fallbackWorkspace: WorkspaceSnapshot
+  fallbackWorkspace: WorkspaceSnapshot,
+  language: Language = 'vi'
 ): {
   workspace?: WorkspaceSnapshot;
   sessions: SavedSessionRecord[];
   summary: string;
 } {
+  const tr = (vi: string, en: string) => (language === 'vi' ? vi : en);
   let parsed: any;
   try {
     parsed = JSON.parse(rawText);
   } catch {
-    throw new Error('File JSON không hợp lệ hoặc sai cú pháp.');
+    throw new Error(tr('File JSON không hợp lệ hoặc sai cú pháp.', 'Invalid or malformed JSON file.'));
   }
 
   if (!parsed || typeof parsed !== 'object') {
-    throw new Error('Nội dung JSON phải là một đối tượng hoặc danh sách phiên.');
+    throw new Error(
+      tr(
+        'Nội dung JSON phải là một đối tượng hoặc danh sách phiên.',
+        'JSON content must be an object or session array.'
+      )
+    );
   }
 
   // Case 1: Full CoCreatorExportBundle
@@ -566,13 +575,21 @@ export function parseImportedJsonBundle(
       .filter((s): s is SavedSessionRecord => s !== null);
 
     if (!workspace && sessions.length === 0) {
-      throw new Error('File JSON không chứa dữ liệu workspace hay phiên làm việc hợp lệ.');
+      throw new Error(
+        tr(
+          'File JSON không chứa dữ liệu workspace hay phiên làm việc hợp lệ.',
+          'JSON file does not contain valid workspace or session records.'
+        )
+      );
     }
 
     return {
       workspace,
       sessions,
-      summary: `Đã nhập ${sessions.length} phiên vào IndexedDB${workspace ? ' và khôi phục trạng thái hiện tại' : ''}.`,
+      summary: tr(
+        `Đã nhập ${sessions.length} phiên vào IndexedDB${workspace ? ' và khôi phục trạng thái hiện tại' : ''}.`,
+        `Imported ${sessions.length} session(s) into IndexedDB${workspace ? ' and restored current workspace' : ''}.`
+      ),
     };
   }
 
@@ -582,11 +599,19 @@ export function parseImportedJsonBundle(
       .map(sanitizeSessionRecord)
       .filter((s): s is SavedSessionRecord => s !== null);
     if (sessions.length === 0) {
-      throw new Error('Danh sách JSON không chứa phiên làm việc hợp lệ.');
+      throw new Error(
+        tr(
+          'Danh sách JSON không chứa phiên làm việc hợp lệ.',
+          'JSON array does not contain any valid session records.'
+        )
+      );
     }
     return {
       sessions,
-      summary: `Đã nhập ${sessions.length} phiên lịch sử vào IndexedDB.`,
+      summary: tr(
+        `Đã nhập ${sessions.length} phiên lịch sử vào IndexedDB.`,
+        `Imported ${sessions.length} history session(s) into IndexedDB.`
+      ),
     };
   }
 
@@ -642,7 +667,10 @@ export function parseImportedJsonBundle(
     return {
       workspace: nextWorkspace,
       sessions: [bpSession],
-      summary: `Đã nhập Blueprint "${blueprint.title}" và lưu vào IndexedDB.`,
+      summary: tr(
+        `Đã nhập Blueprint "${blueprint.title}" và lưu vào IndexedDB.`,
+        `Imported Blueprint "${blueprint.title}" and saved to IndexedDB.`
+      ),
     };
   }
 
@@ -693,7 +721,10 @@ export function parseImportedJsonBundle(
     return {
       workspace,
       sessions: [singleSession],
-      summary: 'Đã khôi phục workspace từ JSON và lưu vào IndexedDB.',
+      summary: tr(
+        'Đã khôi phục workspace từ JSON và lưu vào IndexedDB.',
+        'Restored workspace from JSON and saved to IndexedDB.'
+      ),
     };
   }
 
@@ -701,11 +732,14 @@ export function parseImportedJsonBundle(
   if (singleRecord) {
     return {
       sessions: [singleRecord],
-      summary: 'Đã nhập 1 phiên làm việc vào IndexedDB.',
+      summary: tr(
+        'Đã nhập 1 phiên làm việc vào IndexedDB.',
+        'Imported 1 session record into IndexedDB.'
+      ),
     };
   }
 
-  throw new Error('Định dạng JSON không được hỗ trợ.');
+  throw new Error(tr('Định dạng JSON không được hỗ trợ.', 'Unsupported JSON format.'));
 }
 
 export function buildExportBundle(
